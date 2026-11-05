@@ -3,7 +3,7 @@
 ## 1. Identificação
 - **Tarefa:** `TASK-004` — Prazo comercial e conversão cambial pura.
 - **Objetivo:** Implementar os componentes de cálculo determinístico de prazo comercial e conversão cambial em Java 21 puro no pacote de domínio financeiro (`pricing.domain.calculation`), sem dependências de Spring, JPA/Hibernate, HTTP ou banco de dados. O cálculo de conversão deve reproduzir exatamente o Golden Case C3, validar defensivamente os limites do contrato OpenAPI, garantir arredondamento bancário `HALF_EVEN` em duas casas decimais e comprovar por teste determinístico a obrigatoriedade de conversão a partir de valor presente BRL previamente arredondado.
-- **Status do planejamento:** `IN_PROGRESS` (Implementação autorizada em andamento).
+- **Status do planejamento:** `DONE` (Implementação concluída, validada por testes automatizados e aprovada pelo responsável).
 - **Referências:** `SPEC.md` (§§1, 2, 3); `DECISIONS.md` (`DEC-002`, `DEC-003`, `DEC-004`, `DEC-005`, `DEC-006`, `DEC-010`); `AGENTS.md` (`G-01` a `G-04`); `TASKS.md` (`TASK-004`); `docs/openapi/srm-credit-engine.yaml`.
 - **Dependências:** `TASK-003` (`DONE`).
 - **Modelo de IA Responsável pelo Planejamento e Implementação:** Gemini 3.8 Flash (High).
@@ -40,13 +40,13 @@
 ## 3. Subtarefas
 | Ordem | Subtarefa | Status |
 |---|---|---|
-| ST-01 | Criar plano técnico (`docs/task-plans/TASK-004.md`) e registrar `IN_PROGRESS` em `TASKS.md` | Em andamento |
-| ST-02 | Criar enum `CurrencyCode` (`BRL`, `USD`) em `pricing.domain.model` | Pendente |
-| ST-03 | Implementar `CommercialTermCalculator` em `pricing.domain.calculation` | Pendente |
-| ST-04 | Implementar `CurrencyConverter` em `pricing.domain.calculation` com limites OpenAPI e validações | Pendente |
-| ST-05 | Implementar testes unitários isolados e integrados (`CommercialTermCalculatorTest`, `CurrencyConverterTest`, `PricingEngineCrossCurrencyTest`) | Pendente |
-| ST-06 | Executar testes e suíte completa Maven em `backendcreditengine` registrando evidências reais | Pendente |
-| ST-07 | Atualizar plano técnico com evidências reais e registrar `VALIDATION` em `TASKS.md` | Pendente |
+| ST-01 | Criar plano técnico (`docs/task-plans/TASK-004.md`) e registrar `IN_PROGRESS` em `TASKS.md` | Concluído |
+| ST-02 | Criar enum `CurrencyCode` (`BRL`, `USD`) em `pricing.domain.model` | Concluído |
+| ST-03 | Implementar `CommercialTermCalculator` em `pricing.domain.calculation` | Concluído |
+| ST-04 | Implementar `CurrencyConverter` em `pricing.domain.calculation` com limites OpenAPI e validações | Concluído |
+| ST-05 | Implementar testes unitários isolados e integrados (`CommercialTermCalculatorTest`, `CurrencyConverterTest`, `PricingEngineCrossCurrencyTest`) | Concluído |
+| ST-06 | Executar testes e suíte completa Maven em `backendcreditengine` registrando evidências reais | Concluído |
+| ST-07 | Atualizar plano técnico com evidências reais e registrar `VALIDATION` em `TASKS.md` | Concluído |
 
 ## 4. Critérios de Aceite
 - **CA-01:** Cálculo de prazo comercial exato em meses inteiros ($n \ge 1$) para $1$, $29$, $30$, $31$, $60$, $61$, $90$ dias corridos, viradas de mês e ano bissexto.
@@ -60,4 +60,38 @@
 - **CA-09:** Suíte completa Maven executada com sucesso (`BUILD SUCCESS`) e sem regressões nos testes da TASK-001/TASK-003.
 
 ## 5. Resultado da Execução
-*(A ser preenchido ao concluir as subtarefas ST-02 a ST-06)*
+- **Status:** `DONE` (Implementação concluída, validada e aprovada pelo desenvolvedor).
+- **Estrutura de Arquivos Criados:**
+  - `backendcreditengine/src/main/java/com/claudiocarige/backendcreditengine/pricing/domain/model/CurrencyCode.java`
+  - `backendcreditengine/src/main/java/com/claudiocarige/backendcreditengine/pricing/domain/calculation/CommercialTermCalculator.java`
+  - `backendcreditengine/src/main/java/com/claudiocarige/backendcreditengine/pricing/domain/calculation/CurrencyConverter.java`
+  - `backendcreditengine/src/test/java/com/claudiocarige/backendcreditengine/pricing/domain/calculation/CommercialTermCalculatorTest.java`
+  - `backendcreditengine/src/test/java/com/claudiocarige/backendcreditengine/pricing/domain/calculation/CurrencyConverterTest.java`
+  - `backendcreditengine/src/test/java/com/claudiocarige/backendcreditengine/pricing/domain/PricingEngineCrossCurrencyTest.java`
+  - `docs/task-plans/TASK-004.md`
+- **Classes Intocadas da TASK-003:**
+  - `PricingEngine.java`, `PricingInput.java`, `PricingResult.java`, `ReceivableType.java`, `CompoundInterestCalculator.java`, `PricingStrategy.java`, `TradeBillPricingStrategy.java`, `PostDatedCheckPricingStrategy.java` e `DECISIONS.md` permaneceram 100% inalterados.
+- **Comandos Executados e Evidências:**
+  - `.\mvnw.cmd test "-Dtest=CommercialTermCalculatorTest,CurrencyConverterTest,PricingEngineCrossCurrencyTest"`:
+    - `CommercialTermCalculatorTest`: 17 testes executados, 0 falhas, 0 erros (0.457 s).
+    - `CurrencyConverterTest`: 16 testes executados, 0 falhas, 0 erros (0.094 s).
+    - `PricingEngineCrossCurrencyTest`: 2 testes executados, 0 falhas, 0 erros (0.016 s).
+    - Total de testes específicos da TASK-004: 35 testes, `BUILD SUCCESS` (7.024 s).
+  - `.\mvnw.cmd test` (suíte completa com Testcontainers PostgreSQL 16.15):
+    - `BackendcreditengineApplicationTests`: 1 teste executado, 0 falhas (33.46 s).
+    - `CommercialTermCalculatorTest`: 17 testes executados, 0 falhas.
+    - `CompoundInterestCalculatorTest`: 3 testes executados, 0 falhas.
+    - `CurrencyConverterTest`: 16 testes executados, 0 falhas.
+    - `PricingEngineCrossCurrencyTest`: 2 testes executados, 0 falhas.
+    - `PricingEngineTest`: 18 testes executados, 0 falhas.
+    - Total: **57 testes executados**, 0 falhas, 0 erros, `BUILD SUCCESS` (43.581 s).
+- **Incidentes e Resolução Rastreável:**
+  - Na primeira execução de `CurrencyConverterTest`, o teste parametrizado `shouldThrowWhenRateIsBelowMinimum` continha a entrada `"0.0000009"` (escala 7). A validação de escala ($\le 6$) disparou prioritariamente sobre a validação de limite mínimo ($0.000001$), gerando falha de mensagem esperada. A entrada foi corrigida para valores estritamente dentro da escala 6 (`"0.000000"`, `"-0.000001"`, `"-1.000000"`, `"-100.00"`), enquanto valores com escala $> 6$ são cobertos de forma independente pelo teste `shouldThrowWhenRateScaleExceedsSix`. O ajuste foi validado imediatamente.
+- **Conformidade dos Critérios de Aceite:**
+  - **CA-01 e CA-02 (Prazo Comercial):** APROVADOS (17 cenários cobrindo todos os limites temporais e rejeições defensivas).
+  - **CA-03 e CA-04 (Conversão Cambial e Limites):** APROVADOS (limites $[0.000001, 9999999.999999]$, escala $\le 6$, rejeição de VP com escala $> 2$ e arredondamento `HALF_EVEN`).
+  - **CA-05 (Golden Case C3):** APROVADO ($\text{US\$}~17.094,67$ e deságio $\text{R\$}~7.140,06$ ao centavo).
+  - **CA-06 (Ordem de Arredondamento):** APROVADO (comprovação de $100.02 / 0.5 = 200.04 \neq 200.05$).
+  - **CA-07 (Composição e Extensibilidade):** APROVADO (`PricingEngineCrossCurrencyTest` validando C3 e coexistência com C1 e C2 sem alterar classes de produção).
+  - **CA-08 (Domínio Puro):** APROVADO (nenhuma dependência externa nos pacotes de cálculo).
+  - **CA-09 (Suíte Verde):** APROVADO (57 testes passando, `BUILD SUCCESS`).

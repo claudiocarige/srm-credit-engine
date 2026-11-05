@@ -50,15 +50,38 @@ Registrar **as decisões que orientam o início da implementação**, com justif
 
 ## DEC-003 — Precisão financeira (`APPROVED`)
 
-**Decisão.** Utilizar `BigDecimal` (sem `float`/`double`), `MathContext.DECIMAL128` nas etapas intermediárias e `HALF_EVEN` com duas casas **nos pontos definidos pelo `SPEC.md`**. Arredondar o valor presente BRL; na conversão USD, dividir esse BRL já arredondado pela cotação e arredondar o resultado USD; deságio BRL é a subtração exata do valor de face pelo VP BRL arredondado. Transportar valores e taxas em JSON como strings decimais exatas, sem recálculo financeiro no Angular.
+**Decisão.** Utilizar `BigDecimal` para valores monetários e taxas, sem `float`/`double`, com `MathContext.DECIMAL128` nos cálculos intermediários e `RoundingMode.HALF_EVEN` com duas casas decimais exclusivamente nos pontos definidos pelo `SPEC.md`.
 
-**Motivo.** Evitar erros de precisão e reproduzir exatamente os Golden Cases **C1, C2 e C3**. **Risco:** arredondamento prematuro ou conversão indevida para `number` altera valores ao centavo.
+- **Valor presente BRL:** calcular com precisão `DECIMAL128` e arredondar para duas casas decimais utilizando `HALF_EVEN`.
+- **Deságio BRL:** calcular pela subtração exata do valor de face pelo valor presente BRL já arredondado, sem arredondamento adicional.
+- **Conversão USD:** dividir o valor presente BRL previamente arredondado pela cotação cambial (BRL por USD), utilizando `DECIMAL128`, e arredondar o resultado USD para duas casas decimais com `HALF_EVEN`.
+- **Validação cambial:** o `CurrencyConverter` deve rejeitar valores presentes BRL com mais de duas casas decimais, evitando arredondamento silencioso ou inversão da ordem de cálculo.
+- **Transporte de dados:** representar valores monetários e taxas no JSON como strings decimais exatas, sem recálculo financeiro no Angular.
+
+**Motivo.** Garantir precisão decimal, previsibilidade dos cálculos e reprodução exata dos Golden Cases C1, C2 e C3.
+
+**Risco.** Arredondamentos intermediários indevidos, inversão da ordem de conversão ou utilização de `float`/`double` podem gerar divergências financeiras ao centavo.
+
+**Rastreabilidade:** TASK-003 (precificação BRL) e TASK-004 (conversão cambial pura).
 
 ## DEC-004 — Strategy Pattern e composição (`APPROVED`)
 
-**Decisão.** Utilizar `PricingStrategy` como interface **aberta**, uma implementação por tipo de recebível e seleção simples por tipo. Duplicata (spread `1,50% a.m.`) e cheque pré-datado (`2,50% a.m.`) compartilham a fórmula composta por **composição**, não por herança. Usar `record` para dados imutáveis quando adequado. Converter moeda **após** calcular o resultado BRL.
+**Decisão.** Utilizar `PricingStrategy` como interface **aberta (não sealed)**, com uma implementação por tipo de recebível e seleção por registro de estratégias no `PricingEngine`.
 
-**Motivo.** Permitir novas fórmulas ou ativos sem alterar Strategies existentes. **Alternativas não adotadas:** `switch` central com cálculos, contrato limitado a `getSpread()` e `sealed interface` para `PricingStrategy`, pois restringiriam ou dificultariam a extensão desejada.
+- **Duplicata Mercantil:** `TradeBillPricingStrategy`, com spread de `1,50% a.m.`.
+- **Cheque Pré-datado:** `PostDatedCheckPricingStrategy`, com spread de `2,50% a.m.`.
+- As Strategies compartilham `CompoundInterestCalculator` por **composição**, não por herança.
+- O `PricingEngine` oferece um construtor padrão para as Strategies oficiais e outro que recebe `List<PricingStrategy>`, permitindo composição externa e extensibilidade.
+- Organizar as responsabilidades em `domain.model`, `domain.strategy` e `domain.calculation`, mantendo a arquitetura **Package by Feature**.
+- Utilizar `record` para dados imutáveis quando adequado.
+- Manter a precificação exclusivamente em **BRL**. A conversão cambial ocorre **após o cálculo e arredondamento do valor presente BRL**, por meio de `CurrencyConverter`, sem modificar as Strategies ou o `PricingEngine`.
+- A orquestração entre cálculo de prazo, precificação e conversão cambial pertence à camada de aplicação.
+
+**Motivo.** Aplicar os princípios SOLID **SRP, OCP e DIP**, permitindo novas fórmulas ou ativos sem alterar as Strategies existentes, preservando a separação de responsabilidades e a testabilidade. O registro externo permite adicionar estratégias sem modificar o mecanismo de seleção; a inclusão no conjunto padrão exige atualizar sua configuração.
+
+**Alternativas não adotadas:** `switch` central com cálculos, contrato limitado a `getSpread()`, `sealed interface` para `PricingStrategy` e conversão cambial dentro das Strategies, por aumentarem o acoplamento ou restringirem a extensibilidade.
+
+**Rastreabilidade:** TASK-003 (motor financeiro e Strategy) e TASK-004 (conversão cambial pura).
 
 ## DEC-007 — Liquidação, idempotência e concorrência (`APPROVED`)
 
