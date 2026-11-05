@@ -231,7 +231,7 @@ Uma tarefa só pode receber `DONE` quando:
 |---|---|---|---|---|
 | TASK-001 | Estrutura mínima do backend Java e testes | P0 | — | `DONE` |
 | TASK-002 | Contratos de dados/API com OpenAPI Contract First | P0 | 001 | `VALIDATION` |
-| TASK-003 | Motor financeiro BRL + Strategy + C1/C2 | P0 | 001, 002 | `PENDING` |
+| TASK-003 | Motor financeiro BRL + Strategy + C1/C2 | P0 | 001, 002 | `DONE` |
 | TASK-004 | Prazo comercial, conversão BRL→USD + C3 | P0 | 003 | `PENDING` |
 | TASK-005 | PostgreSQL, Flyway e modelo persistente inicial | P0 | 002 | `PENDING` |
 | TASK-006 | Currency Engine: histórico, vigência e API manual | P0 | 004, 005 | `PENDING` |
@@ -339,7 +339,7 @@ mantendo execução e aprovação individuais.
     pares e ímpares.
     - Utilizar resultados esperados calculados
     independentemente da implementação testada.
-- **Evidências:** `PENDENTE`.
+- **Evidências:** Ver [`docs/task-plans/TASK-003.md`](docs/task-plans/TASK-003.md) — Motor financeiro BRL em Java puro (`CompoundInterestCalculator`, `TradeBillPricingStrategy`, `PostDatedCheckPricingStrategy`, `PricingEngine`) aprovado com 21 testes unitários (`CompoundInterestCalculatorTest`, `PricingEngineTest`) reproduzindo C1 (VP R$ 92.859,94 / Deságio R$ 7.140,06) e C2 (VP R$ 23.337,77 / Deságio R$ 1.662,23), diferenciação exata de `HALF_EVEN` vs `HALF_UP` em empates (.XX5), limites financeiros de entrada e extensibilidade OCP comprovada. Suíte completa Maven com 22 testes passando (`BUILD SUCCESS`).
 
 ### TASK-004 — Prazo comercial e conversão cambial pura
 - **Objetivo:** completar as regras financeiras independentes de infraestrutura.
@@ -546,8 +546,8 @@ liquidações conforme o contrato OpenAPI, utilizando os filtros, parâmetros de
 
 | ID | Requisito / invariante | Tarefas responsáveis | Testes / evidências |
 |---|---|---|---|
-| R-01 | Duplicata: spread 1,5%, VP e deságio exatos (C1) | 003 | `A DEFINIR` |
-| R-02 | Cheque: spread 2,5%, VP e deságio exatos (C2) | 003 | `A DEFINIR` |
+| R-01 | Duplicata: spread 1,5%, VP e deságio exatos (C1) | 003 | `PricingEngineTest.shouldCalculateGoldenCaseC1` |
+| R-02 | Cheque: spread 2,5%, VP e deságio exatos (C2) | 003 | `PricingEngineTest.shouldCalculateGoldenCaseC2` |
 | R-03 | Câmbio BRL→USD somente ao final, C3 e arredondamento | 004, 006, 007 | `A DEFINIR` |
 | R-04 | `BigDecimal`, DECIMAL128, HALF_EVEN e valores JSON como strings | 003, 004, 005, 007, 013 | `A DEFINIR` |
 | R-05 | Prazo inteiro e dueDate→ceil(dias/30); vencimento futuro | 004, 007 | `A DEFINIR` |
@@ -568,7 +568,7 @@ liquidações conforme o contrato OpenAPI, utilizando os filtros, parâmetros de
 | R-20 | Testes de regras/erros aplicáveis e validação final | 003–020 | `A DEFINIR` |
 | R-21 | CI automatizada (DEC-011, diferencial) | 018 | `A DEFINIR` |
 | R-22 | Diagrama ER e modelo relacional normalizado | 005, 009 | `A DEFINIR` |
-| R-23 | Extensibilidade da Strategy com nova fórmula | 003 | `A DEFINIR` |
+| R-23 | Extensibilidade da Strategy com nova fórmula | 003 | `PricingEngineTest.shouldDemonstrateExtensibilityWithAlternativeFormulaStrategy` |
 | R-24 | Data da operação controlada pelo backend | 004, 007 | `A DEFINIR` |
 | R-25 | Novas cotações não alteram liquidações concluídas | 006, 009 | `A DEFINIR` |
 | R-26 | Especificação OpenAPI oficial criada e validada antes da implementação das APIs - Validação estrutural OpenAPI | 002 | `docs/openapi/srm-credit-engine.yaml` (`@redocly/cli lint` — válido, 0 erros/avisos) |
@@ -588,5 +588,6 @@ liquidações conforme o contrato OpenAPI, utilizando os filtros, parâmetros de
 |---|---|---|---|---|---|---|
 | 2026-11-04 | TASK-001 | `pom.xml`, `application.yaml`, `db/migration/.gitkeep`, `TestcontainersConfiguration`, `BackendcreditengineApplicationTests` | `.\mvnw.cmd help:effective-pom`, `.\mvnw.cmd -B clean test` (JDK `21.0.11` + Testcontainers `postgres:16-alpine`) | `BUILD SUCCESS` (`Tests run: 1, Failures: 0, Errors: 0`) | Prevenido via `effective-pom`: Spring Boot `4.1.2` usa Testcontainers `2.0.5` (`testcontainers-postgresql` e pacote `org.testcontainers.postgresql`) em vez das coordenadas 1.x | APROVADO (2026-11-04) |
 | 2026-11-05 | TASK-002 | `docs/openapi/srm-credit-engine.yaml`, `docs/contracts.md`, `docs/task-plans/TASK-002.md`, `DECISIONS.md` (`DEC-007`), `TASKS.md` | `@redocly/cli lint` (Rev. `1.4`), verificação local `node` dos regexes/invariantes OpenAPI (Rev. `1.5`), `git status --short`, `git diff --check` | `VALIDATION` (`allRegexTestsPassed: true`, `4` requests com `additionalProperties: false`, `0` chaves `code:` remanescentes, `8` paths / `10` ops / `25` schemas) | Humano corrigiu `7` para `8` paths no plano (1.4) e identificou na revisão (1.5) ausência de `additionalProperties: false` nos 4 requests, uso de `code` em vez de `errorCode` e regexes decimais de entrada aceitando zero (`"0.00"`/`"0.000000"`) | AGUARDANDO VALIDAÇÃO |
+| 2026-11-05 | TASK-003 | `docs/task-plans/TASK-003.md`, `TASKS.md`, 9 classes de domínio Java puro em `pricing.domain`, 2 classes de teste JUnit 5 | `.\mvnw.cmd test "-Dtest=PricingEngineTest,CompoundInterestCalculatorTest"`, `.\mvnw.cmd test` | `DONE` (`Tests run: 21, Failures: 0, Errors: 0` específicos; `Tests run: 22, Failures: 0, Errors: 0` suíte completa) | Identificado no planejamento que switch violaria OCP (corrigido com injeção de Strategies via construtor) e que taxas mensais devem exigir escala <= 6 sem arredondamento silencioso | APROVADO (2026-11-05) |
 
 > **Próxima ação:** revisar/aprovar este backlog como **plano inicial**. Depois, solicitar ao Antigravity **somente o plano detalhado da TASK-001**; execução e modificações continuam sujeitas à autorização G-01/G-03.
