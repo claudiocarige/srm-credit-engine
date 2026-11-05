@@ -220,7 +220,7 @@ Uma tarefa só pode receber `DONE` quando:
 10. A tarefa possui arquivo de planejamento individual, previamente aprovado, atualizado com resultados e evidências reais, incluindo os desvios relevantes identificados durante a implementação.
 11. Para tarefas que implementam ou consomem APIs REST, a implementação foi verificada quanto à conformidade com `docs/openapi/srm-credit-engine.yaml`, incluindo schemas, validações, códigos HTTP e respostas de erro.
 12. Para tarefas exclusivamente documentais, a validação corresponde aos critérios documentais aplicáveis. A TASK-002 exige validação estrutural da especificação OpenAPI, consistência com SPEC.md e aprovação humana,  sem exigir testes de código ainda não implementado.
-
+13. **Validação estrita de requests:** as tarefas responsáveis por implementar endpoints REST deverão garantir que propriedades JSON não definidas no contrato OpenAPI sejam rejeitadas com HTTP 400, utilizando o padrão ProblemDetail, e comprovar esse comportamento com testes automatizados.
 **Nota:** cobertura de regras conhecidas não é sinônimo de 100% de linhas de código nem de exaustividade sobre todas as falhas imagináveis.
 
 ## 4. Visão geral — backlog inicial
@@ -311,7 +311,7 @@ mantendo execução e aprovação individuais.
 
 - **Referências:** SPEC §§1, 2, 3 e 5;
   DEC-002, DEC-003, DEC-007, DEC-010;
-  AGENTS G-01 a G-04. ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
+  AGENTS G-01 a G-04. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
 
 - **Aceite/testes:**
   - Especificação OpenAPI 3.x criada e validada.
@@ -326,9 +326,7 @@ mantendo execução e aprovação individuais.
   - Contrato consistente com SPEC.md e DECISIONS.md.
   - Aprovação humana antes da implementação das APIs.
 
-- **Evidências:** registrar os arquivos produzidos,
-  a ferramenta utilizada na validação OpenAPI,
-  os resultados obtidos e a aprovação humana.
+- **Evidências:** Ver [`docs/openapi/srm-credit-engine.yaml`](docs/openapi/srm-credit-engine.yaml), [`docs/contracts.md`](docs/contracts.md) e [`docs/task-plans/TASK-002.md`](docs/task-plans/TASK-002.md) — OpenAPI `3.0.3` oficial (10 operações em 8 paths sob `/api/v1`, strings decimais estritamente positivas na entrada, `additionalProperties: false` nos 4 schemas de request, `ProblemDetail` RFC 9457 com `errorCode`, `Idempotency-Key`, `Retry-After` e exemplos C1–C3; `@redocly/cli lint` executado na Revisão `1.4` + verificação local de invariantes/regexes e `git diff --check` na Revisão `1.5`).
 
 ### TASK-003 — Motor financeiro BRL e Strategy
 - **Objetivo:** calcular valor presente e deságio em BRL, isolado de Spring/JPA/HTTP.
@@ -378,9 +376,9 @@ mantendo execução e aprovação individuais.
 
 ### TASK-006 — Implementar Currency Engine
 - **Objetivo:** cadastrar e recuperar a cotação vigente para uma operação. 
-- **Escopo:** endpoint de atualização manual, histórico append-only, `effectiveAt`, seleção da maior vigência `<= instante da operação`, índice apropriado e massa inicial apenas de desenvolvimento. Implementar os endpoints de cadastro e consulta de cotações conforme as operações, parâmetros e schemas definidos em `docs/openapi/srm-credit-engine.yaml`.
-- **Referências:** SPEC §§1 e 3; DEC-006, DEC-008, DEC-013. ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
-- **Aceite/testes:** cotação positiva; vigências anteriores/futuras, retroatividade e ausência de taxa (`422`); novas cotações não mudam históricos já concluídos; teste de API e integração no PostgreSQL. Validar por testes de integração a conformidade dos endpoints de câmbio com o contrato OpenAPI, incluindo payloads, validações, códigos HTTP e respostas de erro.
+- **Escopo:** endpoint de atualização manual, histórico append-only, `effectiveAt`, seleção da maior vigência `<= instante da operação`, índice apropriado e massa inicial apenas de desenvolvimento. Implementar os endpoints de cadastro e consulta de cotações conforme as operações, parâmetros e schemas definidos em `docs/openapi/srm-credit-engine.yaml`, avaliando e configurando a desserialização do Jackson para a versão do Spring Boot adotada a fim de rejeitar propriedades JSON desconhecidas em `CreateExchangeRateRequest` (`400 Bad Request`, `application/problem+json`, `errorCode: VALIDATION_ERROR`, sem expor classes internas).
+- **Referências:** SPEC §§1 e 3; DEC-006, DEC-008, DEC-013. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
+- **Aceite/testes:** cotação positiva (`rateBrl >= 0.000001`, rejeitando `"0.000000"`); vigências anteriores/futuras, retroatividade e ausência de taxa (`422`); novas cotações não mudam históricos já concluídos; teste de API e integração no PostgreSQL. Validar por testes automatizados (`MockMvc` / integração) a conformidade dos endpoints de câmbio com o contrato OpenAPI, incluindo rejeição efetiva de propriedades JSON desconhecidas com `HTTP 400` + `errorCode: VALIDATION_ERROR`, payloads, validações, códigos HTTP e respostas de erro.
 - **Evidências:** `PENDENTE`.
 
 ### TASK-007 — API REST de simulação e integração OpenAPI/Swagger UI
@@ -393,8 +391,9 @@ mantendo execução e aprovação individuais.
   - Implementar o endpoint de simulação conforme o
     schema e as operações do OpenAPI oficial.
   - Aplicar Bean Validation e validações de domínio.
+  - Avaliar e garantir a configuração do Jackson na versão do Spring Boot utilizada para rejeitar propriedades JSON desconhecidas durante a desserialização dos requests (`additionalProperties: false`).
   - Integrar o motor financeiro e o Currency Engine.
-  - Implementar o tratamento global de erros.
+  - Implementar o tratamento global de erros (`ProblemDetail` com `errorCode`, traduzindo propriedades desconhecidas para `400 Bad Request`, `application/problem+json` e `errorCode: VALIDATION_ERROR` sem expor tipos internos).
   - Disponibilizar Swagger UI utilizando o contrato
     OpenAPI oficial como referência.
   - Verificar compatibilidade das bibliotecas de
@@ -409,7 +408,8 @@ mantendo execução e aprovação individuais.
 - **Aceite/testes:**
   - Endpoint implementado conforme o contrato OpenAPI.
   - Request e response aderentes aos schemas aprovados.
-  - Validação de entradas e tratamento de erros.
+  - Validação de entradas (incluindo rejeição de `"0.00"` em `faceValueBrl`) e tratamento de erros com `errorCode`.
+  - Comprovação por testes automatizados com `MockMvc` da rejeição de propriedades JSON desconhecidas em `SimulationRequest` (`HTTP 400`, `application/problem+json`, `errorCode: VALIDATION_ERROR`, mensagem segura).
   - Valores monetários retornados como strings decimais.
   - Simulação sem efeitos persistentes de liquidação.
   - Swagger UI acessível no ambiente de desenvolvimento.
@@ -418,21 +418,21 @@ mantendo execução e aprovação individuais.
 
 ### TASK-008 — Identificação e persistência mínima dos recebíveis
 - **Objetivo:** disponibilizar títulos e cedentes identificáveis e elegíveis para a liquidação, conforme o fluxo aprovado na TASK-002.
-- **Escopo:** somente criação/consulta e estado mínimo indispensáveis; validar vínculo com cedente, integridade e elegibilidade, sem workflow bancário ou autorização avançada. Implementar os endpoints de cadastro, consulta individual e listagem de recebíveis conforme o contrato OpenAPI aprovado, incluindo header Location, schemas e validações.
-- **Referências:** SPEC §§1 e 3; DEC-007, DEC-008, DEC-014. ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
-- **Aceite/testes:** IDs/vínculos consistentes, valores e datas válidos, rejeição de dados inválidos ou duplicados conforme contrato, constraints comprovadas em PostgreSQL; sem criar regras não especificadas. Validar a conformidade contratual dos endpoints, incluindo criação com HTTP 201, consulta com HTTP 200, recursos inexistentes com HTTP 404, conflitos HTTP 409 e respostas de validação.
+- **Escopo:** somente criação/consulta e estado mínimo indispensáveis; validar vínculo com cedente, integridade e elegibilidade, sem workflow bancário ou autorização avançada. Implementar os endpoints de cadastro, consulta individual e listagem de recebíveis conforme o contrato OpenAPI aprovado, incluindo header Location, schemas, rejeição de propriedades JSON desconhecidas pelo Jackson em `CreateReceivableRequest` e validações.
+- **Referências:** SPEC §§1 e 3; DEC-007, DEC-008, DEC-014. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
+- **Aceite/testes:** IDs/vínculos consistentes, valores (`faceValueBrl >= 0.01`, rejeitando `"0.00"`) e datas válidos, rejeição de dados inválidos ou duplicados conforme contrato, constraints comprovadas em PostgreSQL; sem criar regras não especificadas. Validar a conformidade contratual dos endpoints, incluindo comprovação via `MockMvc` da rejeição de propriedades JSON desconhecidas (`HTTP 400` + `errorCode: VALIDATION_ERROR`), criação com HTTP 201, consulta com HTTP 200, recursos inexistentes com HTTP 404, conflitos HTTP 409 e respostas de validação.
 - **Evidências:** `PENDENTE`.
 
 ### TASK-009 — Liquidação ACID e snapshots auditáveis
 - **Objetivo:** liquidar lotes válidos integralmente, persistindo os parâmetros financeiros efetivamente utilizados.
-- **Escopo:** transação Spring única, lote de `1..N` itens do mesmo cedente/moeda, recálculo no servidor, itens e snapshot imutável, migrations complementares, sem integração bancária externa. Implementar a estrutura de request/response da liquidação conforme o contrato OpenAPI aprovado, incluindo schemas do lote, itens e snapshots financeiros, preservando a transação ACID única.
+- **Escopo:** transação Spring única, lote de `1..N` itens do mesmo cedente/moeda, recálculo no servidor, itens e snapshot imutável, migrations complementares, sem integração bancária externa. Implementar a estrutura de request/response da liquidação conforme o contrato OpenAPI aprovado, garantindo na desserialização do Jackson a rejeição de propriedades desconhecidas em `SettlementRequest` (ex.: `"manualDiscount"`), incluindo schemas do lote, itens e snapshots financeiros, preservando a transação ACID única.
     - Definir desde a migration inicial de liquidação as restrições estruturais de integridade.
     - Garantir UNIQUE(receivable_id) na associação entre recebíveis e itens de liquidação.
     - Garantir unicidade persistente de Idempotency-Key no modelo definido para a operação.
     - Preservar uma única transação financeira.
     - Não disponibilizar a funcionalidade de liquidação como pronta antes da conclusão da TASK-010.
-- **Referências:** SPEC §§1 e 3; DEC-003, DEC-006, DEC-007, DEC-015.ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
-- **Aceite/testes:** lote válido com valores corretos; item inválido no meio causa rollback integral; cotação e taxas gravadas no snapshot; histórico não editável/excluível pela aplicação. Validar a estrutura dos snapshots e valores retornados conforme os schemas OpenAPI aplicáveis. A conformidade completa dos comportamentos de idempotência e concorrência será validada na TASK-010.**Esta etapa não libera o endpoint como concluído para entrega antes da TASK-010.**
+- **Referências:** SPEC §§1 e 3; DEC-003, DEC-006, DEC-007, DEC-015.ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
+- **Aceite/testes:** lote válido com valores corretos; item inválido no meio causa rollback integral; cotação e taxas gravadas no snapshot; histórico não editável/excluível pela aplicação. Validar a estrutura dos snapshots e valores retornados conforme os schemas OpenAPI aplicáveis e comprovar com `MockMvc` que propriedades JSON desconhecidas em `SettlementRequest` retornam `HTTP 400` (`application/problem+json`, `errorCode: VALIDATION_ERROR`). A conformidade completa dos comportamentos de idempotência e concorrência será validada na TASK-010.**Esta etapa não libera o endpoint como concluído para entrega antes da TASK-010.**
     - Verificar rollback integral do lote.
     - Verificar ausência de registros financeiros parciais.
     - Verificar persistência correta do snapshot.
@@ -445,7 +445,7 @@ mantendo execução e aprovação individuais.
 ### TASK-010 — Idempotência e controle de concorrência
 - **Objetivo:** garantir que retry e operações simultâneas não criem dupla liquidação.
 - **Escopo:** `Idempotency-Key`, hash canônico SHA-256, registro definitivo da chave na **mesma transação** que os efeitos financeiros, unicidade de chave e de `settlement_items.receivable_id`, proteção de estado, timeout/transação e tradução de conflitos. Implementar o contrato HTTP de idempotência e concorrência definido no OpenAPI, incluindo Idempotency-Key, replay HTTP 200, conflitos HTTP 409, timeout HTTP 503 e header Retry-After.
-- **Referências:** SPEC §3.5; DEC-007, DEC-008, DEC-010. ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
+- **Referências:** SPEC §3.5; DEC-007, DEC-008, DEC-010. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
 - **Aceite/testes:** mesma chave/payload recupera resultado; payload diferente `409`; concorrência com mesma chave e com chaves distintas sobre o mesmo título; primeira transação abortada permite retry seguro; timeout sem duplicação; rollback completo; **não** criar reserva `IN_PROGRESS` em transação separada, Inbox/Outbox ou Redis. Executar testes automatizados de conformidade contratual
 para criação inédita HTTP 201, replay HTTP 200, payload divergente HTTP 409, dupla liquidação HTTP 409
 e timeout HTTP 503, preservando a mesma Idempotency-Key.
@@ -470,14 +470,14 @@ e timeout HTTP 503, preservando a mesma Idempotency-Key.
 - **Objetivo:** consultar histórico por período, cedente e moeda, com paginação server-side.
 - **Escopo:** endpoint REST, filtros opcionais conforme contrato, `Pageable` com limite, projeções JPA e ordenação determinística; SQL nativo apenas se justificado. Implementar os endpoints de listagem e detalhamento de liquidações conforme o contrato OpenAPI, respeitando os filtros, schemas de resposta,
 paginação e ordenação aprovados.
-- **Referências:** SPEC §§1 e 5; DEC-008, DEC-010. ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
+- **Referências:** SPEC §§1 e 5; DEC-008, DEC-010. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
 - **Aceite/testes:** combinações de filtros, limites e páginas vazias/inválidas; ordenação por instante + ID único; nenhuma paginação em memória; sem N+1 relevante; índices do extrato definidos por consultas reais, não antecipados sem evidência. Validar a conformidade dos parâmetros, filtros, limites de paginação, estrutura das respostas e códigos HTTP com a especificação OpenAPI.
 - **Evidências:** `PENDENTE`.
 
 ### TASK-012 — Inicializar frontend Angular
 - **Objetivo:** estabelecer frontend mínimo, tipado e organizado por funcionalidade.
 - **Escopo:** versão Angular/Node compatível aprovada no plano, Standalone Components, TypeScript estrito, serviços HttpClient, Reactive Forms e infraestrutura de testes, sem NgRx. Preparar os modelos TypeScript e a estrutura dos serviços HTTP para consumir os contratos definidos em `docs/openapi/srm-credit-engine.yaml`, evitando definições independentes ou divergentes dos schemas oficiais.
-- **Referências:** DEC-001, DEC-002, DEC-009, DEC-010. ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
+- **Referências:** DEC-001, DEC-002, DEC-009, DEC-010. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
 - **Aceite/testes:** projeto compila e executa teste mínimo; organização por features; sem cálculo financeiro ou conversão insegura para `number`. Verificar que os modelos e contratos HTTP preparados no
 frontend são compatíveis com os schemas OpenAPI aprovados, sem exigir endpoints ainda não implementados.
 - **Evidências:** `PENDENTE`.
@@ -485,14 +485,14 @@ frontend são compatíveis com os schemas OpenAPI aprovados, sem exigir endpoint
 ### TASK-013 — Painel de simulação Angular
 - **Objetivo:** permitir ao operador simular recebíveis em tempo real.
 - **Escopo:** formulário com valor de face, vencimento, tipo e moeda, validações, `debounceTime`/`switchMap`, apresentação precisa e estados de carregamento/vazio/erro. Consumir o endpoint de simulação utilizando os schemas de request/response, validações e códigos HTTP definidos no contrato OpenAPI oficial.
-- **Referências:** SPEC §§1 e 5; DEC-003, DEC-009, DEC-010. ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
+- **Referências:** SPEC §§1 e 5; DEC-003, DEC-009, DEC-010. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
 - **Aceite/testes:** entradas inválidas não chamam API, mudanças rápidas não exibem respostas antigas, resultado exibido preserva centavos, ausência de câmbio tratada, sem fórmula financeira no navegador. Validar que os dados enviados e recebidos pelo Angular respeitam o OpenAPI, incluindo representação decimal como String, campos obrigatórios e tratamento de erros.
 - **Evidências:** `PENDENTE`.
 
 ### TASK-014 — Interface Angular de liquidação
 - **Objetivo:** executar a operação de liquidação aprovada sem duplicidade induzida pela interface.
 - **Escopo:** seleção/confirmação de título ou lote conforme TASK-002, envio com `Idempotency-Key` por intenção, bloqueio durante envio e retry manual seguro da mesma intenção. Consumir o contrato OpenAPI de liquidação, implementando corretamente Idempotency-Key, schemas de request/response e tratamento dos status HTTP 200, 201, 409 e 503.
-- **Referências:** SPEC §§1 e 3; DEC-007, DEC-009, DEC-010. ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
+- **Referências:** SPEC §§1 e 3; DEC-007, DEC-009, DEC-010. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
 - **Aceite/testes:** duplo clique bloqueado; mesmo retry usa a chave original e payload equivalente; nova intenção usa nova chave; erro/confirmação claros; **não** usar `switchMap` como cancelamento financeiro nem retry automático não aprovado. Validar por testes que o frontend respeita o contrato
 OpenAPI, preserva a mesma Idempotency-Key em retries da mesma intenção e trata corretamente os conflitos e timeouts transitórios.
 - **Evidências:** `PENDENTE`.
@@ -501,7 +501,7 @@ OpenAPI, preserva a mesma Idempotency-Key em retries da mesma intenção e trata
 - **Objetivo:** oferecer histórico operacional pesquisável e paginado.
 - **Escopo:** filtros por período/cedente/moeda, página/tamanho controlados pelo backend, ordenação contratada e estados de lista vazia/carregamento/erro. Consumir os endpoints de extrato e detalhamento de
 liquidações conforme o contrato OpenAPI, utilizando os filtros, parâmetros de paginação e schemas oficiais.
-- **Referências:** SPEC §§1 e 5; DEC-008, DEC-009, DEC-010. ver [Contrato OpenAPI](../openapi/srm-credit-engine.yaml).
+- **Referências:** SPEC §§1 e 5; DEC-008, DEC-009, DEC-010. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
 - **Aceite/testes:** filtros e páginas enviados corretamente, troca de filtros reinicia paginação quando aplicável, não baixa todo o extrato e não faz agregações financeiras no cliente. Validar que os parâmetros enviados, os modelos TypeScript e a apresentação dos dados financeiros correspondem aos schemas e respostas do OpenAPI aprovado.
 - **Evidências:** `PENDENTE`.
 
@@ -520,12 +520,10 @@ liquidações conforme o contrato OpenAPI, utilizando os filtros, parâmetros de
 - **Evidências:** `PENDENTE`.
 
 ### TASK-018 — GitHub Actions (CI enxuta)
-- **Objetivo:** automatizar compilação e suíte obrigatória sem prejudicar os requisitos P0. Validar estruturalmente a especificação OpenAPI e verificar a conformidade contratual da API, conforme as ferramentas adotadas e os testes disponíveis no projeto. Validar estruturalmente a especificação OpenAPI
-  e verificar a conformidade contratual da API, conforme as ferramentas adotadas e os testes disponíveis no projeto.
+- **Objetivo:** automatizar compilação e suíte obrigatória sem prejudicar os requisitos P0. Validar estruturalmente a especificação OpenAPI e verificar a conformidade contratual da API, conforme as ferramentas adotadas e os testes disponíveis no projeto.
 - **Escopo:** um workflow em `.github/workflows/ci.yml` com jobs backend/frontend, Java 21, Maven `verify` incluindo integração Testcontainers, Angular testes/build, permissões mínimas e lint se já configurado.
 - **Referências:** DEC-010, DEC-011; enunciado Sênior (diferencial para Pleno).
-- **Aceite/testes:** execução em PR/push para `main`, workflow falha quando teste obrigatório falha, sem `skipTests` para mascarar falhas, sem deploy/segredos reais. A esteira falha quando a validação OpenAPI ou os testes obrigatórios de conformidade HTTP falharem. A esteira falha quando a validação OpenAPI ou
-  os testes obrigatórios de conformidade HTTP falharem. **Não confundir CI verde com cobertura integral das regras.**
+- **Aceite/testes:** execução em PR/push para `main`, workflow falha quando teste obrigatório falha, sem `skipTests` para mascarar falhas, sem deploy/segredos reais. A esteira falha quando a validação OpenAPI ou os testes obrigatórios de conformidade HTTP falharem. **Não confundir CI verde com cobertura integral das regras.**
 - **Evidências:** `PENDENTE`.
 
 ### TASK-019 — Documentação final e práticas de Git
@@ -573,14 +571,14 @@ liquidações conforme o contrato OpenAPI, utilizando os filtros, parâmetros de
 | R-23 | Extensibilidade da Strategy com nova fórmula | 003 | `A DEFINIR` |
 | R-24 | Data da operação controlada pelo backend | 004, 007 | `A DEFINIR` |
 | R-25 | Novas cotações não alteram liquidações concluídas | 006, 009 | `A DEFINIR` |
-| R-26 | Especificação OpenAPI oficial criada e validada antes da implementação das APIs - Validação estrutural OpenAPI  | 002 | `A DEFINIR` |
+| R-26 | Especificação OpenAPI oficial criada e validada antes da implementação das APIs - Validação estrutural OpenAPI | 002 | `docs/openapi/srm-credit-engine.yaml` (`@redocly/cli lint` — válido, 0 erros/avisos) |
 | R-27 | Implementação backend e consumidores Angular aderentes ao contrato OpenAPI aprovado - Testes de conformidade | 006–015, 020 | `A DEFINIR` |
 | R-28 | Swagger UI disponibiliza o contrato oficial sem divergências - Verificação de integração | 007, 020 | `A DEFINIR` |
 
 ## 7. Pendências de definição antes da implementação
 
-1. **Ciclo de vida dos recebíveis (TASK-002 — RESOLVIDO em [`docs/contracts.md`](docs/contracts.md)):** cedentes por seed + `GET /api/v1/assignors`; recebíveis por seed + `POST /api/v1/receivables` (`OPEN`), `GET /api/v1/receivables/{id}` e `GET /api/v1/receivables?assignorId=...&status=OPEN`, com `UNIQUE(assignor_id, document_number)` normalizado.
-2. **Contrato HTTP (TASK-002 — RESOLVIDO em [`docs/contracts.md`](docs/contracts.md)):** payloads com valores decimais em `String`, limites numéricos contra overflow em `NUMERIC(19,2)`, precedência estrita de `Idempotency-Key` (`201` nova / `200` replay, chave omitida em consultas), timeout concorrente `503` com `Retry-After` orientativo e paginação do extrato por lote (`size <= 100`).
+1. **Ciclo de vida dos recebíveis (TASK-002 — RESOLVIDO em [`docs/openapi/srm-credit-engine.yaml`](docs/openapi/srm-credit-engine.yaml) e [`docs/contracts.md`](docs/contracts.md)):** cedentes por seed + `GET /api/v1/assignors`; recebíveis por seed + `POST /api/v1/receivables` (`OPEN`), `GET /api/v1/receivables/{id}` e `GET /api/v1/receivables?assignorId=...&status=OPEN`, com `UNIQUE(assignor_id, document_number)` normalizado.
+2. **Contrato HTTP (TASK-002 — RESOLVIDO em [`docs/openapi/srm-credit-engine.yaml`](docs/openapi/srm-credit-engine.yaml) e [`docs/contracts.md`](docs/contracts.md)):** OpenAPI `3.0.3` Contract First (10 operações em 8 paths), `ProblemDetail` RFC 9457, strings decimais, limites numéricos contra overflow em `NUMERIC(19,2)`, precedência estrita de `Idempotency-Key` (`201` nova / `200` replay, chave omitida em consultas), timeout concorrente `503` com `Retry-After` orientativo e paginação do extrato por lote (`size <= 100`).
 3. **Detalhes de infraestrutura:** versões compatíveis de Spring Boot, Angular e Node, convenções de nomes, localização física das migrations, forma de servir o frontend e variáveis de ambiente serão propostas dentro das tarefas pertinentes — não decididas automaticamente por este backlog.
 4. **Evolução documental:** manter o DECISIONS.md enxuto como registro oficial e acrescentar progressivamente as decisões necessárias às tarefas, mediante aprovação humana. As referências a decisões futuras no TASKS.md devem ser preservadas.
 
@@ -589,6 +587,6 @@ liquidações conforme o contrato OpenAPI, utilizando os filtros, parâmetros de
 | Data | Tarefa | Mudança autorizada | Testes/comandos | Resultado | Erro de IA detectado / validação | Aprovação |
 |---|---|---|---|---|---|---|
 | 2026-11-04 | TASK-001 | `pom.xml`, `application.yaml`, `db/migration/.gitkeep`, `TestcontainersConfiguration`, `BackendcreditengineApplicationTests` | `.\mvnw.cmd help:effective-pom`, `.\mvnw.cmd -B clean test` (JDK `21.0.11` + Testcontainers `postgres:16-alpine`) | `BUILD SUCCESS` (`Tests run: 1, Failures: 0, Errors: 0`) | Prevenido via `effective-pom`: Spring Boot `4.1.2` usa Testcontainers `2.0.5` (`testcontainers-postgresql` e pacote `org.testcontainers.postgresql`) em vez das coordenadas 1.x | APROVADO (2026-11-04) |
-| 2026-11-05 | TASK-002 | `docs/contracts.md`, `docs/task-plans/TASK-002.md`, `DECISIONS.md` (`DEC-007`), `TASKS.md` | Revisão estática cruzada com `SPEC.md`/`DECISIONS.md`, `git status --short`, `git diff --check` | `VALIDATION` (sem erros de formatação ou contradições) | Revisões humanas `1.0 → 1.3` refinaram cadastro `POST /receivables` + `GET /receivables/{id}`, precedência de idempotência sobre `SETTLED`, `503` com `Retry-After` orientativo, omissão da chave nas consultas e limites contra overflow em `NUMERIC(19,2)` | AGUARDANDO VALIDAÇÃO |
+| 2026-11-05 | TASK-002 | `docs/openapi/srm-credit-engine.yaml`, `docs/contracts.md`, `docs/task-plans/TASK-002.md`, `DECISIONS.md` (`DEC-007`), `TASKS.md` | `@redocly/cli lint` (Rev. `1.4`), verificação local `node` dos regexes/invariantes OpenAPI (Rev. `1.5`), `git status --short`, `git diff --check` | `VALIDATION` (`allRegexTestsPassed: true`, `4` requests com `additionalProperties: false`, `0` chaves `code:` remanescentes, `8` paths / `10` ops / `25` schemas) | Humano corrigiu `7` para `8` paths no plano (1.4) e identificou na revisão (1.5) ausência de `additionalProperties: false` nos 4 requests, uso de `code` em vez de `errorCode` e regexes decimais de entrada aceitando zero (`"0.00"`/`"0.000000"`) | AGUARDANDO VALIDAÇÃO |
 
 > **Próxima ação:** revisar/aprovar este backlog como **plano inicial**. Depois, solicitar ao Antigravity **somente o plano detalhado da TASK-001**; execução e modificações continuam sujeitas à autorização G-01/G-03.
