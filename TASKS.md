@@ -71,6 +71,80 @@ apenas porque seu ID aparece no TASKS.md.
 
 **Prioridades:** `P0` = obrigatório ou bloqueador de requisito Pleno; `P1` = diferencial aprovado, subordinado à entrega P0. Priorização não dispensa critérios obrigatórios de aceitação.
 
+## Planejamento técnico obrigatório por tarefa
+
+### REGRA 1 — Planejamento obrigatório
+
+Toda TASK deve possuir um plano técnico individual antes de iniciar sua implementação.
+
+O planejamento deverá ser produzido pela rota de planejamento definida no `AGENTS.md`.
+
+### REGRA 2 — Arquivo individual
+
+O planejamento deverá ser registrado em:
+
+`docs/task-plans/TASK-XXX.md`
+
+Onde `XXX` corresponde ao identificador original da tarefa (ex.: `TASK-001` → `docs/task-plans/TASK-001.md`).
+
+### REGRA 3 — Conteúdo mínimo
+
+Cada arquivo deverá apresentar:
+
+- Identificação e objetivo.
+- Referências e dependências.
+- Diagnóstico do estado atual do projeto.
+- Abordagem técnica proposta.
+- Justificativa da abordagem.
+- Alternativas consideradas, quando relevantes.
+- Arquivos previstos para criação ou modificação.
+- Subtarefas sequenciais.
+- Critérios de aceite.
+- Testes obrigatórios.
+- Riscos e medidas preventivas.
+- Aprovação humana.
+- Resultados e evidências de execução.
+- Desvios relevantes em relação ao planejamento.
+- Identificação da ferramenta e do modelo de IA responsável por sua elaboração (incluindo a versão, quando disponível), garantindo rastreabilidade das contribuições dos agentes ao longo do desenvolvimento.
+
+### REGRA 4 — Aprovação antes da implementação
+
+O agente deverá apresentar o planejamento para revisão humana. A criação do arquivo de planejamento não representa aprovação para implementar a tarefa.
+
+A implementação somente poderá iniciar após:
+
+1. Revisão do plano.
+2. Resolução de ambiguidades críticas.
+3. Aprovação humana do plano técnico.
+4. Autorização explícita das modificações e comandos aplicáveis, respeitando G-01 e G-03.
+
+### REGRA 5 — Preservação do histórico
+
+Mudanças relevantes no planejamento deverão registrar:
+
+- O que foi alterado e o motivo da alteração.
+- Alternativa substituída, quando aplicável.
+- Aprovação humana.
+- Impacto nos critérios de aceite ou testes.
+
+Não apagar justificativas e decisões anteriores sem necessidade. Utilizar o histórico Git como mecanismo complementar de rastreabilidade.
+
+### REGRA 6 — Evolução progressiva
+
+Os planos devem possuir detalhamento proporcional à complexidade de cada tarefa: tarefas simples recebem planos concisos; tarefas financeiras, transacionais ou de alto risco recebem análise mais detalhada. Evitar documentação redundante e repetição integral de `SPEC.md` e `DECISIONS.md`.
+
+### REGRA 7 — Conclusão da tarefa
+
+Antes de marcar uma TASK como `DONE`:
+
+- Atualizar seu arquivo de planejamento com resultados reais.
+- Registrar os testes executados e seus resultados.
+- Informar desvios relevantes e decisões arquiteturais incorporadas.
+- Registrar problemas e erros reais da IA, quando ocorrerem.
+- Obter aprovação humana.
+
+Nenhuma tarefa poderá ser considerada concluída sem essa atualização.
+
 ## 2.1. Definition of Ready (DoR)
 
 Uma tarefa somente poderá iniciar sua implementação quando:
@@ -105,6 +179,7 @@ Uma tarefa só pode receber `DONE` quando:
 7. **O responsável pelo projeto aprovou explicitamente a conclusão.**
 8. As decisões técnicas relevantes surgidas durante a tarefa foram registradas ou atualizadas no DECISIONS.md, mediante autorização do responsável.
 9. As alterações foram versionadas conforme a política Git aprovada. Quando o incremento funcional estiver completo, o Pull Request deverá apresentar justificativas e evidências dos testes.
+10. A tarefa possui arquivo de planejamento individual, previamente aprovado, atualizado com resultados e evidências reais, incluindo os desvios relevantes identificados durante a implementação.
 
 **Nota:** cobertura de regras conhecidas não é sinônimo de 100% de linhas de código nem de exaustividade sobre todas as falhas imagináveis.
 
@@ -114,7 +189,7 @@ Uma tarefa só pode receber `DONE` quando:
 
 | ID | Entrega | Prioridade | Depende de | Status |
 |---|---|---|---|---|
-| TASK-001 | Estrutura mínima do backend Java e testes | P0 | — | `PENDING` |
+| TASK-001 | Estrutura mínima do backend Java e testes | P0 | — | `DONE` |
 | TASK-002 | Contratos mínimos de dados/API e fluxo dos recebíveis | P0 | 001 | `PENDING` |
 | TASK-003 | Motor financeiro BRL + Strategy + C1/C2 | P0 | 001, 002 | `PENDING` |
 | TASK-004 | Prazo comercial, conversão BRL→USD + C3 | P0 | 003 | `PENDING` |
@@ -175,7 +250,7 @@ mantendo execução e aprovação individuais.
   credenciais reais e estratégia definida para testes
   de inicialização que dependam do PostgreSQL.
 
-- **Evidências:** PENDENTE.
+- **Evidências:** Ver [`docs/task-plans/TASK-001.md`](docs/task-plans/TASK-001.md) — `.\mvnw.cmd -B clean test` `BUILD SUCCESS` em Java `21.0.11` com PostgreSQL `16.15` (Testcontainers `2.0.5`), Flyway e Hibernate `7.4.13` (`ddl-auto=validate`).
 
 ### TASK-002 — Definir contrato mínimo de dados e API
 - **Objetivo:** resolver *antes das migrations* o fluxo de criação/identificação de cedente, recebível, simulação e lote de liquidação.
@@ -422,6 +497,6 @@ mantendo execução e aprovação individuais.
 
 | Data | Tarefa | Mudança autorizada | Testes/comandos | Resultado | Erro de IA detectado / validação | Aprovação |
 |---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — |
+| 2026-11-04 | TASK-001 | `pom.xml`, `application.yaml`, `db/migration/.gitkeep`, `TestcontainersConfiguration`, `BackendcreditengineApplicationTests` | `.\mvnw.cmd help:effective-pom`, `.\mvnw.cmd -B clean test` (JDK `21.0.11` + Testcontainers `postgres:16-alpine`) | `BUILD SUCCESS` (`Tests run: 1, Failures: 0, Errors: 0`) | Prevenido via `effective-pom`: Spring Boot `4.1.2` usa Testcontainers `2.0.5` (`testcontainers-postgresql` e pacote `org.testcontainers.postgresql`) em vez das coordenadas 1.x | APROVADO (2026-11-04) |
 
 > **Próxima ação:** revisar/aprovar este backlog como **plano inicial**. Depois, solicitar ao Antigravity **somente o plano detalhado da TASK-001**; execução e modificações continuam sujeitas à autorização G-01/G-03.
