@@ -232,7 +232,7 @@ Uma tarefa só pode receber `DONE` quando:
 | TASK-001 | Estrutura mínima do backend Java e testes | P0 | — | `DONE` |
 | TASK-002 | Contratos de dados/API com OpenAPI Contract First | P0 | 001 | `VALIDATION` |
 | TASK-003 | Motor financeiro BRL + Strategy + C1/C2 | P0 | 001, 002 | `DONE` |
-| TASK-004 | Prazo comercial, conversão BRL→USD + C3 | P0 | 003 | `PENDING` |
+| TASK-004 | Prazo comercial, conversão BRL→USD + C3 | P0 | 003 | `DONE` |
 | TASK-005 | PostgreSQL, Flyway e modelo persistente inicial | P0 | 002 | `PENDING` |
 | TASK-006 | Currency Engine: histórico, vigência e API manual | P0 | 004, 005 | `PENDING` |
 | TASK-007 | API REST de simulação + conformidade OpenAPI e Swagger UI | P0 | 003, 004, 006 | `PENDING` |
@@ -354,7 +354,7 @@ mantendo execução e aprovação individuais.
     arredondamento seja implementada incorretamente.
     - Utilizar Clock controlável para testes envolvendo
     data da operação, vencimento e prazo comercial.
-- **Evidências:** `PENDENTE`.
+- **Evidências:** Ver [`docs/task-plans/TASK-004.md`](docs/task-plans/TASK-004.md) — Componentes de prazo comercial (`CommercialTermCalculator`) e conversão cambial (`CurrencyConverter`) implementados em Java puro com 35 testes unitários e de integração (`CommercialTermCalculatorTest`, `CurrencyConverterTest`, `PricingEngineCrossCurrencyTest`) cobrindo prazo comercial em meses inteiros (1, 30, 31, 60, 90 dias, bissexto), limites contratuais da cotação ([0.000001, 9999999.999999]), HALF_EVEN em empates, salvaguarda contra VP bruto não arredondado, Golden Case C3 exato (US$ 17.094,67 e Deságio R$ 7.140,06) e teste determinístico de divergência da ordem de arredondamento (US$ 200.04 != US$ 200.05). Suíte completa Maven com 57 testes passando (`BUILD SUCCESS`).
 
 ### TASK-005 — Banco PostgreSQL, migrations e entidades iniciais
 - **Objetivo:** estabelecer persistência reproduzível e invariantes de domínio.
@@ -548,9 +548,9 @@ liquidações conforme o contrato OpenAPI, utilizando os filtros, parâmetros de
 |---|---|---|---|
 | R-01 | Duplicata: spread 1,5%, VP e deságio exatos (C1) | 003 | `PricingEngineTest.shouldCalculateGoldenCaseC1` |
 | R-02 | Cheque: spread 2,5%, VP e deságio exatos (C2) | 003 | `PricingEngineTest.shouldCalculateGoldenCaseC2` |
-| R-03 | Câmbio BRL→USD somente ao final, C3 e arredondamento | 004, 006, 007 | `A DEFINIR` |
+| R-03 | Câmbio BRL→USD somente ao final, C3 e arredondamento | 004, 006, 007 | `PricingEngineCrossCurrencyTest`, `CurrencyConverterTest` |
 | R-04 | `BigDecimal`, DECIMAL128, HALF_EVEN e valores JSON como strings | 003, 004, 005, 007, 013 | `A DEFINIR` |
-| R-05 | Prazo inteiro e dueDate→ceil(dias/30); vencimento futuro | 004, 007 | `A DEFINIR` |
+| R-05 | Prazo inteiro e dueDate→ceil(dias/30); vencimento futuro | 004, 007 | `CommercialTermCalculatorTest` |
 | R-06 | Taxa base configurável, snapshot financeiro | 003, 009 | `A DEFINIR` |
 | R-07 | Câmbio vigente `effectiveAt`, sem fallback, histórico append-only | 006, 009 | `A DEFINIR` |
 | R-08 | Simulação sem efeitos persistentes de liquidação | 007, 013 | `A DEFINIR` |
