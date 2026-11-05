@@ -705,12 +705,14 @@ components:
   headers:
     ReceivableLocationHeader:
       description: URI do recebível recém-criado.
+      required: true
       schema:
         type: string
         format: uri-reference
       example: /api/v1/receivables/c7b3a110-5312-4e7e-9b19-08d1e4a00101
     SettlementLocationHeader:
       description: URI da liquidação recém-criada.
+      required: true
       schema:
         type: string
         format: uri-reference
@@ -719,6 +721,7 @@ components:
       description: >
         Intervalo sugerido em segundos (orientação/hint, configurável no servidor) antes de repetir
         a requisição com a mesma Idempotency-Key. Não garante que a transação concorrente já tenha concluído.
+      required: true
       schema:
         type: integer
         format: int32
