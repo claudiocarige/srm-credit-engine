@@ -3,7 +3,7 @@
 ## 1. Identificação
 - **Tarefa:** `TASK-002` — Definir contratos de dados e API REST com OpenAPI (Contract First).
 - **Objetivo:** estabelecer e documentar, antes das migrations e da implementação dos endpoints, o modelo mínimo de dados, os fluxos de negócio e a especificação formal OpenAPI da API REST. O contrato OpenAPI será a fonte oficial dos endpoints, parâmetros, schemas, validações e respostas HTTP. As regras complementares permanecerão documentadas em `docs/contracts.md`.
-- **Status do planejamento:** `REVISÃO 1.4 PROPOSTA — AGUARDANDO APROVAÇÃO DO ESCOPO ADICIONAL`.
+- **Status do planejamento:** `APROVADO PELO RESPONSÁVEL (REVISÃO 1.6 — NOTA DE DATA DE REFERÊNCIA E CLOCK NOS EXEMPLOS)`.
 - **Referências:** `SPEC.md` (§§1, 2, 3 e 5); `DECISIONS.md` (`DEC-001` a `DEC-004`, `DEC-007`, `DEC-010`); `AGENTS.md` (`G-01` a `G-04`); `TASKS.md` (`TASK-002`, §§7.1–7.2).
 - **Dependências:** `TASK-001` (`DONE`).
 - **Ferramenta e modelo de IA elaborador:** Google Antigravity — Gemini 4 Argon.
@@ -25,7 +25,7 @@
   4. **Timeout concorrente transitório:** expiração de `lock-timeout-ms` retorna `503 Service Unavailable` (`CONCURRENT_SETTLEMENT_TIMEOUT`) com header `Retry-After` configurável (`srm.settlement.retry-after-seconds`, padrão `2`), documentado como orientação (*hint*) de nova tentativa — e não garantia de conclusão da transação concorrente — preservando a mesma `Idempotency-Key` no retry.
   5. **Limites numéricos e totalização *bottom-up*:** mantêm-se `NUMERIC(19,2)`, `NUMERIC(19,6)` e `NUMERIC(10,6)` do `SPEC.md`, limitando na entrada `faceValueBrl` a `0.01..999999999.99`, `rateBrl` a `0.000001..9999999.999999` e o lote a `1..100` itens, eliminando matematicamente qualquer overflow em `BRL` ou `USD`. Totais do lote equivalem à soma exata dos snapshots arredondados dos itens.
   6. **Extrato paginado por lote + detalhe sob demanda:** `GET /api/v1/settlements` pagina lotes (`size` padrão `20`, máximo `100`, ordenado por `settled_at DESC, id DESC`, sem carregar `items[]` na listagem) e `GET /api/v1/settlements/{settlementId}` retorna o lote com os 16 campos obrigatórios de cada item.
-  7. **Contrato OpenAPI oficial:** definir previamente a especificação `docs/openapi/srm-credit-engine.yaml`, utilizando OpenAPI 3.x. O documento deverá conter todos os endpoints REST aprovados, operações HTTP, parâmetros, headers, schemas reutilizáveis, exemplos, validações, paginação, códigos de resposta e erros padronizados. Valores monetários deverão utilizar `type: string`, preservando a precisão decimal. O contrato deverá ser validado antes da implementação dos controllers, permanecendo como fonte de verdade para backend e frontend.
+  7. **Contrato OpenAPI oficial e validação estrita de entrada:** definir previamente a especificação `docs/openapi/srm-credit-engine.yaml`, utilizando OpenAPI 3.x. O documento deverá conter todos os endpoints REST aprovados, operações HTTP, parâmetros, headers, schemas reutilizáveis, exemplos, validações, paginação, códigos de resposta e erros padronizados (`ProblemDetail` com `errorCode`). Os quatro schemas de request (`CreateReceivableRequest`, `CreateExchangeRateRequest`, `SimulationRequest` e `SettlementRequest`) declaram `additionalProperties: false` para rejeitar campos desconhecidos com `HTTP 400 Bad Request` (`application/problem+json`, `errorCode: VALIDATION_ERROR`, sem expor detalhes internos), e os `pattern` decimais de entrada bloqueiam valores zero (`"0.00"` e `"0.000000"`). Valores monetários deverão utilizar `type: string`, preservando a precisão decimal. O contrato deverá ser validado antes da implementação dos controllers, permanecendo como fonte de verdade para backend e frontend.
 - **Justificativa:** fecha todas as ambiguidades antes do banco e das APIs mantendo simplicidade (KISS/YAGNI), rastreabilidade integral (`SPEC.md` §1.4), ausência de `N+1`, proteção contra overflow e semântica HTTP precisa.
 - **Alternativas consideradas:**
   - *Alternativa A — Recebíveis exclusivamente por seed (sem `POST /api/v1/receivables`):* substituída na Revisão `1.2`, pois impedia o operador de simular um novo título, cadastrá-lo explicitamente como `OPEN` e liquidá-lo na sequência.
@@ -80,6 +80,7 @@
 - **CA-10:** A especificação documenta métodos HTTP, parâmetros de rota e consulta, headers obrigatórios, schemas de request/response, enums, formatos, limites, exemplos, paginação, status HTTP e respostas `ProblemDetail`.
 - **CA-11:** Todos os valores monetários e taxas trafegam como strings decimais, com schemas que não permitam perda de precisão por representação numérica JSON.
 - **CA-12:** A especificação OpenAPI foi validada estruturalmente e revisada quanto à consistência com `SPEC.md`, `DECISIONS.md` e `docs/contracts.md`, antes da implementação dos endpoints.
+- **CA-13:** Os quatro schemas de request declaram `additionalProperties: false`, o envelope `ProblemDetail` e seus exemplos utilizam `errorCode`, os `pattern` decimais de entrada proíbem valores zero (`"0.00"` / `"0.000000"`) e o planejamento das `TASK-006` a `TASK-009` exige comprovação com `MockMvc` da rejeição de propriedades JSON desconhecidas pelo Jackson no Spring Boot.
 
 ## 8. Estratégia de Testes e Verificação
 *(Por se tratar de tarefa exclusivamente documental/contratual, a validação nesta etapa é estática e cruzada; os testes automatizados correspondentes serão executados nas `TASK-005` a `TASK-015`.)*
@@ -103,11 +104,8 @@
 
 ## 10. Revisão e Aprovação Humana
 - **Plano inicial apresentado:** 2026-11-04
-- **Ajustes solicitados e incorporados:** Revisões `1.1`, `1.2` e `1.3` (detalhadas na Seção 11).
-- **Situação:** APROVADO PARA EXECUÇÃO DOCUMENTAL (`sim` em 2026-11-05).
-- **Revisão 1.4:** proposta de inclusão de Contract First com especificação OpenAPI como fonte oficial dos contratos HTTP.
-- **Aprovação da Revisão 1.4:** PENDENTE.
-- **Autorização para criação do OpenAPI:** PENDENTE, conforme G-01.
+- **Ajustes solicitados e incorporados:** Revisões `1.1`, `1.2`, `1.3`, `1.4`, `1.5` e `1.6` (detalhadas na Seção 11).
+- **Situação:** APROVADO PARA EXECUÇÃO DOCUMENTAL E OPENAPI (`sim`, `autorizo com uma correção: ... São 10 operações em 8 paths sob /api/v1`, `autorizado` na Revisão `1.5` e `AUTORIZADO` na Revisão `1.6` em 2026-11-05).
 
 ## 11. Histórico de Revisões
 | Revisão | Alteração | Justificativa | Aprovação |
@@ -116,34 +114,30 @@
 | 1.1 | Fluxo Angular sem *quote lock*, canonização `SHA-256` ordenada sem IDs repetidos, troca de `409` por `503` em timeout concorrente, campos do snapshot, extrato por lote e preservação incremental do `DECISIONS.md` | Separar falhas transitórias (`503`) de conflitos definitivos (`409`) e evitar antecipar `DEC-008`/`DEC-009` | Revisado pelo responsável |
 | 1.2 | Inclusão de `POST /api/v1/receivables` + unicidade `UNIQUE(assignor_id, document_number)`, precedência explícita de idempotência (`201` nova / `200` replay), configurabilidade de `Retry-After`, moeda explícita de cada atributo, totalização *bottom-up* e endpoints de câmbio/extrato | Permitir simular → cadastrar `OPEN` → liquidar sem CRUD completo e eliminar ambiguidade de replay | Revisado pelo responsável |
 | 1.3 | Inclusão de `GET /api/v1/receivables/{id}` (`200`/`404`), limites financeiros contra overflow em lotes de até 100 itens, omissão de `Idempotency-Key` nas consultas de liquidações e explicitação de `Retry-After` como orientação (*hint*) | Garantir navegabilidade do header `Location`, segurança numérica em `NUMERIC(19,2)` e encapsulamento da chave de idempotência | Aprovado (`sim`, 2026-11-05) |
-| 1.4 | Inclusão de Contract First, criação de contrato OpenAPI oficial, validação estrutural e separação entre especificação HTTP e documentação complementar | Antecipar a definição formal do contrato da API, orientar backend/frontend e reduzir divergências antes da implementação | PENDENTE |
+| 1.4 | Inclusão de Contract First, criação de `docs/openapi/srm-credit-engine.yaml` (OpenAPI `3.0.3`, 10 operações em 8 paths, `ProblemDetail` RFC 9457), validação estrutural via `@redocly/cli` e refatoração enxuta de `docs/contracts.md` | Antecipar a definição formal validável do contrato da API, orientar backend/frontend e eliminar duplicação documental | Aprovado (2026-11-05) |
+| 1.5 | Inclusão de `additionalProperties: false` nos 4 schemas de request, renomeação de `code` para `errorCode` em `ProblemDetail` e nos 12 exemplos de erro, correção dos `pattern` de `FaceValueBrlInput` e `ExchangeRateBrlInput` contra zero e registro de conformidade Jackson/`MockMvc` nas `TASK-006` a `TASK-009` | Rejeitar atributos JSON desconhecidos (ex.: `manualDiscount`), padronizar `errorCode` e impedir valores zero na validação contratual | Aprovado (`autorizado`, 2026-11-05) |
+| 1.6 | Observação em `srm-credit-engine.yaml` e `contracts.md` esclarecendo que os exemplos dos *Golden Cases* usam data de operação fixa (`2026-11-04`) para demonstração determinística, enquanto a execução real utiliza o `Clock` do backend (`Clock` controlado nos testes a partir da `TASK-004`) | Evitar interpretação equivocada caso o mesmo payload de exemplo seja executado em outra data | Aprovado (`AUTORIZADO`, 2026-11-05) |
 
 ## 12. Resultado da Execução
-- **Status:** `VALIDATION` (entregáveis documentais gravados e verificados; aguardando aprovação final do responsável para marcar `DONE`).
+- **Status:** `VALIDATION` (entregáveis documentais das Revisões `1.3` a `1.6` criados e validados estruturalmente; aguardando aprovação final do responsável para marcar `DONE`).
 - **Arquivos realmente alterados:**
-  - `docs/contracts.md` (criado).
-  - `docs/task-plans/TASK-002.md` (criado).
-  - `DECISIONS.md` (modificado — refinamento exclusivo da `DEC-007`, mantendo as demais decisões intactas).
-  - `TASKS.md` (modificado — atualização de status/evidências da `TASK-002`, itens 7.1–7.2 e registro de execução).
+  - `docs/openapi/srm-credit-engine.yaml` (criado na Revisão `1.4`, endurecido na Revisão `1.5` e documentado com nota de `Clock` na Revisão `1.6` — OpenAPI `3.0.3`, 10 operações em 8 paths sob `/api/v1`, `additionalProperties: false` nos 4 requests, strings decimais estritamente positivas na entrada, `ProblemDetail` `application/problem+json` com `errorCode`, `Idempotency-Key`, `Retry-After` e exemplos C1, C2 e C3).
+  - `docs/contracts.md` (criado na Revisão `1.3`, refatorado na Revisão `1.4` e atualizado até a Revisão `1.6` com `errorCode`, política de rejeição de propriedades JSON desconhecidas e nota de `Clock` nos exemplos).
+  - `docs/task-plans/TASK-002.md` (criado e atualizado até a Revisão `1.6`).
+  - `DECISIONS.md` (modificado na Revisão `1.3` — refinamento exclusivo da `DEC-007`, mantendo as demais decisões intactas).
+  - `TASKS.md` (modificado — evidências da `TASK-002`, exigência de conformidade Jackson/`MockMvc` nas `TASK-006` a `TASK-009`, correção de links relativos para `docs/openapi/srm-credit-engine.yaml`, itens 7.1–7.2 e registro de execução).
 - **Comandos executados:**
-  - `git status --short`
-  - `git diff --check`
+  - Revisão `1.4`: `npx --yes @redocly/cli@latest lint docs/openapi/srm-credit-engine.yaml`, `git status --short`, `git diff --check`
+  - Revisão `1.5`: verificação automatizada local (`node -e`) das expressões regulares (`FaceValueBrlInput` e `ExchangeRateBrlInput`) e invariantes do YAML (`additionalProperties: false`, `errorCode`, contagem de paths/operações/schemas), `git status --short` e `git diff --check` *(execução externa `npx @redocly/cli` recusada na Revisão `1.5`)*
 - **Verificações e resultados:**
-  - Consistência com `SPEC.md` e `DECISIONS.md`: APROVADA (nenhuma fórmula, arredondamento ou decisão arquitetural violada; evolução incremental do `DECISIONS.md` preservada).
-  - Exatidão aritmética dos exemplos contratuais: APROVADA (C3 = `USD 17094.67` / deságio `BRL 7140.06`; C2 em USD = `4296.27`; totais do lote `125000.00`, `116197.71`, `8802.29` e `21390.94`).
-  - Limites contra overflow em `NUMERIC(19,2)`: APROVADOS (`100` itens no teto permanecem `<= 99_999_999_999_000_000.00 < 10^17`).
-  - `git diff --check`: APROVADO (sem erros de formatação ou espaços finais).
-- **Desvios do planejamento:** nenhum após a Revisão `1.3` aprovada.
-- **Riscos remanescentes:** nenhum bloqueio para `TASK-003` ou `TASK-005`; os contratos definidos em `docs/contracts.md` deverão ser validados por testes automatizados nas respectivas tarefas de implementação.
-- **Aprovação final:** pendente de validação humana do entregável documental.
-
-### Complemento da Revisão 1.4 — OpenAPI Contract First
-
-- **Status:** PENDENTE DE APROVAÇÃO E EXECUÇÃO.
-- **Novo entregável:** `docs/openapi/srm-credit-engine.yaml`.
-- **Validação OpenAPI:** PENDENTE.
-- **Revisão de `docs/contracts.md`:** PENDENTE.
-- **Atualização de `TASKS.md`:** PENDENTE.
-- **Aprovação humana:** PENDENTE.
-
-As evidências registradas anteriormente correspondem exclusivamente à execução da Revisão 1.3. Não constituem evidência de criação ou validação da especificação OpenAPI.
+  - **CA-01 a CA-07 (Consistência com `SPEC.md` e `DECISIONS.md`):** APROVADA (nenhuma fórmula, arredondamento ou decisão arquitetural violada; evolução incremental do `DECISIONS.md` preservada).
+  - **CA-09 a CA-13 (Validação estrutural e segurança OpenAPI `3.0.3`):** APROVADA (`@redocly/cli lint` aprovado com `0` erros e `0` avisos na Revisão `1.4`; na Revisão `1.5`, verificação local confirmou os 4 schemas de request com `additionalProperties: false`, `0` ocorrências remanescentes de `code:`, preservação integral de `8` paths, `10` operações e `25` schemas, e aprovação de 100% dos casos de teste válidos/inválidos dos novos `pattern` decimais).
+  - **Exatidão aritmética dos exemplos (C1, C2 e C3):** APROVADA (`C1 = BRL 92859.94` / deságio `7140.06`; `C2 = BRL 23337.77` / deságio `1662.23`; `C3 = USD 17094.67` / deságio `BRL 7140.06`; lote combinado `USD 21390.94`).
+  - **`git diff --check`:** APROVADO (sem erros de formatação ou espaços finais).
+- **Erros reais da IA detectados e corrigidos (rastreabilidade para `AI_USAGE.md`):**
+  1. Na apresentação textual do plano da Revisão `1.4`, a IA contabilizou "10 operações em 7 paths sob `/api/v1`" em vez de **10 operações em 8 paths** (`/assignors`, `/receivables`, `/receivables/{id}`, `/exchange-rates`, `/exchange-rates/current`, `/simulations`, `/settlements` e `/settlements/{settlementId}`), erro prontamente identificado pelo responsável na revisão humana.
+  2. Na primeira validação com `@redocly/cli lint` (Revisão `1.4`), o linter detectou erro de indentação na linha 1095, uso de `$ref` sob `example` (corrigido para `examples` nomeado) e `nullable: true` combinado com `allOf` sem `type: string` explícito em OpenAPI `3.0.3` (corrigido com o schema reutilizável `NullableExchangeRateString`).
+  3. Na revisão humana do YAML da Revisão `1.4`, o responsável identificou que os regexes decimais de entrada gerados pela IA (`^(0|[1-9][0-9]{0,8})(\.[0-9]{1,2})?$` e `^(0|[1-9][0-9]{0,6})(\.[0-9]{1,6})?$`) aceitavam zero (`"0.00"` e `"0.000000"`) proibido pela regra de negócio, além da omissão de `additionalProperties: false` nos 4 schemas de request; corrigidos e validados na Revisão `1.5`.
+- **Desvios do planejamento:** nenhum após os ajustes acima.
+- **Riscos remanescentes:** nenhum bloqueio para `TASK-003` ou `TASK-005`; os testes de conformidade HTTP (incluindo rejeição de propriedades desconhecidas via Jackson + `MockMvc`) serão executados nas `TASK-006` a `TASK-015`.
+- **Aprovação final:** pendente de validação humana para conclusão (`DONE`).
