@@ -232,7 +232,7 @@ Uma tarefa só pode receber `DONE` quando:
 | TASK-001 | Estrutura mínima do backend Java e testes | P0 | — | `DONE` |
 | TASK-002 | Contratos de dados/API com OpenAPI Contract First | P0 | 001 | `VALIDATION` |
 | TASK-003 | Motor financeiro BRL + Strategy + C1/C2 | P0 | 001, 002 | `DONE` |
-| TASK-004 | Prazo comercial, conversão BRL→USD + C3 | P0 | 003 | `PENDING` |
+| TASK-004 | Prazo comercial, conversão BRL→USD + C3 | P0 | 003 | `IN_PROGRESS` |
 | TASK-005 | PostgreSQL, Flyway e modelo persistente inicial | P0 | 002 | `PENDING` |
 | TASK-006 | Currency Engine: histórico, vigência e API manual | P0 | 004, 005 | `PENDING` |
 | TASK-007 | API REST de simulação + conformidade OpenAPI e Swagger UI | P0 | 003, 004, 006 | `PENDING` |
