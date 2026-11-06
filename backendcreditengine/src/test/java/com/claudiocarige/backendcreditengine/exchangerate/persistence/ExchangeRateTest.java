@@ -3,9 +3,7 @@ package com.claudiocarige.backendcreditengine.exchangerate.persistence;
 import com.claudiocarige.backendcreditengine.pricing.domain.model.CurrencyCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.shaded.org.bouncycastle.jcajce.provider.symmetric.util.IvAlgorithmParameters;
 
-import java.lang.foreign.ValueLayout;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
