@@ -435,9 +435,38 @@ A verificação da TASK-006 será composta por testes unitários, testes de cama
 
 ---
 
-## 15. Estado e Pedido de Autorização
+## 15. Resultados e Evidências de Execução
 
-- **Estado atual:** `PLANO OFICIAL PROPOSTO — NENHUMA ALTERAÇÃO DE CÓDIGO EXECUTADA`.
-- Nenhuma linha de código de produção ou teste foi criada ou modificada.
-- Aguarda autorização explícita do usuário (G-01 / G-02) para iniciar a implementação da **TASK-006** conforme as subtarefas ST-01 a ST-12.
+- **Estado atual:** `VALIDATION`.
+- **Autorização humana:** Recebida explicitamente em 2026-11-06T13:23:42-03:00.
+- **Subtarefas executadas:** ST-01 a ST-12 concluídas com sucesso.
+
+### 15.1. Evidências dos Testes Automatizados
+- **Testes Unitários de Serviço (`ExchangeRateServiceTest`):** 6 testes executados e aprovados (`Tests run: 6, Failures: 0, Errors: 0, Skipped: 0`).
+- **Testes Web de Contrato (`ExchangeRateControllerTest`):** 11 testes executados e aprovados (`Tests run: 11, Failures: 0, Errors: 0, Skipped: 0`). Comprovam:
+  - `POST /api/v1/exchange-rates` com retorno HTTP 201 e sem header `Location`.
+  - Rejeição de propriedades JSON desconhecidas com HTTP 400 e `errorCode: VALIDATION_ERROR`.
+  - Rejeição de `rateBrl` enviado como número JSON com HTTP 400 `VALIDATION_ERROR`.
+  - Rejeição de formato de `rateBrl` fora da regex com HTTP 400 `VALIDATION_ERROR`.
+  - Rejeição de moedas não suportadas (ex.: `BRL`) no POST com HTTP 400 `VALIDATION_ERROR` expondo `field: "currency"`.
+  - Rejeição de `effectiveAt` com sub-microssegundos com HTTP 400 `VALIDATION_ERROR` expondo `field: "effectiveAt"`.
+  - Tradução de violação de unicidade para HTTP 409 `DUPLICATE_EXCHANGE_RATE_EFFECTIVE_AT`.
+  - `GET /api/v1/exchange-rates/current` retornando HTTP 200 com cotação formatada com 6 casas decimais.
+  - `GET /api/v1/exchange-rates/current` retornando HTTP 422 `EXCHANGE_RATE_UNAVAILABLE` quando não há cotação vigente.
+  - `GET /api/v1/exchange-rates/current?currency=BRL` retornando HTTP 400 `VALIDATION_ERROR` antes de chamar serviço/repositório.
+  - `GET /api/v1/exchange-rates/current?currency=EUR` retornando HTTP 400 `VALIDATION_ERROR` antes de chamar serviço/repositório.
+- **Testes de Integração com PostgreSQL Real (`ExchangeRateIntegrationTest`):** 5 testes executados e aprovados via Testcontainers (`Tests run: 5, Failures: 0, Errors: 0, Skipped: 0`). Comprovam:
+  - Round-trip completo HTTP POST + GET no PostgreSQL real.
+  - Disparo real da constraint `uk_exchange_rates_currency_effective_at` traduzida em HTTP 409.
+  - Rejeição de sub-microssegundos na camada HTTP.
+  - Consulta de vigência selecionando o maior `effectiveAt <= clock.instant()`.
+  - Preservação do histórico cambial em inserções retroativas.
+- **Suíte Completa do Projeto (`mvn test`):**
+  - **113 testes executados, 0 falhas, 0 erros, 0 pulados (`BUILD SUCCESS`).**
+  - Nenhuma regressão sobre os 90 testes existentes das tarefas anteriores.
+- **Conformidade de Estilo:** `git diff --check` executado sem erros.
+
+### 15.2. Desvios Técnicos Registrados
+1. **Jackson 3 (Spring Boot 4.1.2):** O starter do Spring Boot 4.1.2 adota o Jackson 3 (`tools.jackson.core:jackson-databind:3.1.7`). O deserializador estrito `StrictStringDeserializer` estende `tools.jackson.databind.ValueDeserializer<String>` e utiliza a anotação `tools.jackson.databind.annotation.JsonDeserialize`, garantindo compatibilidade nativa com a versão adotada sem dependências concorrentes.
+2. **Desacoplamento do Driver JDBC:** O `ExchangeRateService` inspeciona `java.sql.SQLException` (SQLState 23505) diretamente via JDK padrão, mantendo a camada de aplicação desacoplada de classes do driver PostgreSQL (`org.postgresql.util.PSQLException`, que é dependência de escopo `runtime`).
 

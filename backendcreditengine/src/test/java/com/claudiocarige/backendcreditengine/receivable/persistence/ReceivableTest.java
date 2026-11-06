@@ -18,7 +18,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ReceivableTest {
 
     private final Assignor defaultAssignor = new Assignor(
-            UUID.randomUUID(),
             "12345678901",
             "Cedente Exemplo",
             Instant.parse("2026-11-06T12:00:00Z")
