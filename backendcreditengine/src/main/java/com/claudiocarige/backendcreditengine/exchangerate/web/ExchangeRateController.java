@@ -1,6 +1,7 @@
 package com.claudiocarige.backendcreditengine.exchangerate.web;
 
 import com.claudiocarige.backendcreditengine.exchangerate.application.ExchangeRateService;
+import com.claudiocarige.backendcreditengine.exchangerate.application.exception.InvalidCurrencyException;
 import com.claudiocarige.backendcreditengine.exchangerate.persistence.ExchangeRate;
 import com.claudiocarige.backendcreditengine.exchangerate.web.dto.CreateExchangeRateRequest;
 import com.claudiocarige.backendcreditengine.exchangerate.web.dto.ExchangeRateResponse;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestController
 @RequestMapping("/api/v1/exchange-rates")
@@ -45,13 +45,13 @@ public class ExchangeRateController {
 
     @GetMapping(value = "/current", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ExchangeRateResponse> getCurrentExchangeRate(
-            @RequestParam(name = "currency", required = false, defaultValue = "USD") CurrencyCode currency
+            @RequestParam(name = "currency", required = false, defaultValue = "USD") String currency
     ) {
-        if (currency != CurrencyCode.USD) {
-            throw new MethodArgumentTypeMismatchException(currency, CurrencyCode.class, "currency", null, null);
+        if (!"USD".equals(currency)) {
+            throw new InvalidCurrencyException("currency must be USD");
         }
 
-        ExchangeRate rate = exchangeRateService.getExchangeRate(currency, clock.instant());
+        ExchangeRate rate = exchangeRateService.getExchangeRate(CurrencyCode.USD, clock.instant());
         return ResponseEntity.ok(ExchangeRateResponse.fromDomain(rate));
     }
 }

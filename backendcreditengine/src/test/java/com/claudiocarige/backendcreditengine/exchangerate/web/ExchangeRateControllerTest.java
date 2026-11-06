@@ -238,7 +238,8 @@ mockMvc.perform(post("/api/v1/exchange-rates")
     void shouldReturn400WhenCurrencyIsBrlInCurrentEndpoint() throws Exception {
         mockMvc.perform(get("/api/v1/exchange-rates/current?currency=BRL"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode", is("VALIDATION_ERROR")));
+                .andExpect(jsonPath("$.errorCode", is("VALIDATION_ERROR")))
+                .andExpect(jsonPath("$.fieldErrors[0].field", is("currency")));
 
         verifyNoInteractions(exchangeRateService);
     }
@@ -248,7 +249,8 @@ mockMvc.perform(post("/api/v1/exchange-rates")
     void shouldReturn400WhenCurrencyIsEurInCurrentEndpoint() throws Exception {
         mockMvc.perform(get("/api/v1/exchange-rates/current?currency=EUR"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode", is("VALIDATION_ERROR")));
+                .andExpect(jsonPath("$.errorCode", is("VALIDATION_ERROR")))
+                .andExpect(jsonPath("$.fieldErrors[0].field", is("currency")));
 
         verifyNoInteractions(exchangeRateService);
     }
