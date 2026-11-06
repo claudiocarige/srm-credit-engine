@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -253,5 +254,33 @@ mockMvc.perform(post("/api/v1/exchange-rates")
                 .andExpect(jsonPath("$.fieldErrors[0].field", is("currency")));
 
         verifyNoInteractions(exchangeRateService);
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/exchange-rates/nonexistent: returns 404 Not Found with RESOURCE_NOT_FOUND errorCode")
+    void shouldReturn404WhenRouteDoesNotExist() throws Exception {
+        mockMvc.perform(get("/api/v1/exchange-rates/nonexistent"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode", is("RESOURCE_NOT_FOUND")));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/exchange-rates: returns 405 Method Not Allowed with METHOD_NOT_ALLOWED errorCode")
+    void shouldReturn405WhenHttpMethodIsNotAllowed() throws Exception {
+        mockMvc.perform(put("/api/v1/exchange-rates"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.errorCode", is("METHOD_NOT_ALLOWED")));
+    }
+
+    @Test
+    @DisplayName("Unexpected internal error translates to 500 Internal Server Error with INTERNAL_ERROR errorCode")
+    void shouldReturn500WhenUnexpectedInternalExceptionOccurs() throws Exception {
+        when(clock.instant()).thenReturn(FIXED_NOW);
+        when(exchangeRateService.getExchangeRate(eq(CurrencyCode.USD), any()))
+                .thenThrow(new RuntimeException("unexpected database failure"));
+
+        mockMvc.perform(get("/api/v1/exchange-rates/current"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.errorCode", is("INTERNAL_ERROR")));
     }
 }

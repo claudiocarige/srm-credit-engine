@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,14 +55,18 @@ public class ExchangeRateService {
     private void handleDataIntegrityViolation(DataIntegrityViolationException ex, CurrencyCode currency, Instant effectiveAt) {
         Throwable cause = ex;
         while (cause != null) {
-            if (cause instanceof SQLException sqlEx) {
-                if ("23505".equals(sqlEx.getSQLState())) {
-                    if (sqlEx.getMessage() != null && sqlEx.getMessage().contains(UK_EXCHANGE_RATES_CURRENCY_EFFECTIVE_AT)) {
-                        throw new DuplicateExchangeRateException(currency, effectiveAt);
-                    }
+            if (cause instanceof ConstraintViolationException cve) {
+                boolean matchesSqlState = "23505".equals(cve.getSQLState());
+                boolean matchesConstraint = UK_EXCHANGE_RATES_CURRENCY_EFFECTIVE_AT.equalsIgnoreCase(cve.getConstraintName());
+                if (matchesSqlState && matchesConstraint) {
+                    throw new DuplicateExchangeRateException(currency, effectiveAt);
                 }
-            } else if (cause.getMessage() != null && cause.getMessage().contains(UK_EXCHANGE_RATES_CURRENCY_EFFECTIVE_AT)) {
-                throw new DuplicateExchangeRateException(currency, effectiveAt);
+            } else if (cause instanceof SQLException sqlEx) {
+                boolean matchesSqlState = "23505".equals(sqlEx.getSQLState());
+                boolean matchesConstraint = sqlEx.getMessage() != null && sqlEx.getMessage().contains(UK_EXCHANGE_RATES_CURRENCY_EFFECTIVE_AT);
+                if (matchesSqlState && matchesConstraint) {
+                    throw new DuplicateExchangeRateException(currency, effectiveAt);
+                }
             }
             cause = cause.getCause();
         }

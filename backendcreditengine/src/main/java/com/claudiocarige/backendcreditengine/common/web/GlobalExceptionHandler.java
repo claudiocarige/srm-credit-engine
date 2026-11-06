@@ -19,11 +19,14 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
@@ -34,6 +37,8 @@ public class GlobalExceptionHandler {
     private static final String ERROR_CODE_VALIDATION_ERROR = "VALIDATION_ERROR";
     private static final String ERROR_CODE_DUPLICATE_RATE = "DUPLICATE_EXCHANGE_RATE_EFFECTIVE_AT";
     private static final String ERROR_CODE_RATE_UNAVAILABLE = "EXCHANGE_RATE_UNAVAILABLE";
+    private static final String ERROR_CODE_RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND";
+    private static final String ERROR_CODE_METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED";
     private static final String ERROR_CODE_INTERNAL_ERROR = "INTERNAL_ERROR";
 
     private final Clock clock;
@@ -156,11 +161,51 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
     }
 
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ProblemDetail> handleNoResourceFound(
+            NoResourceFoundException ex,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = buildProblemDetail(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                ex.getMessage(),
+                request.getRequestURI(),
+                ERROR_CODE_RESOURCE_NOT_FOUND
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = buildProblemDetail(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                "Method Not Allowed",
+                ex.getMessage(),
+                request.getRequestURI(),
+                ERROR_CODE_METHOD_NOT_ALLOWED
+        );
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(problem);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleGenericException(
             Exception ex,
             HttpServletRequest request
     ) {
+        if (ex instanceof ErrorResponse errorResponse) {
+            ProblemDetail problem = buildProblemDetail(
+                    errorResponse.getStatusCode(),
+                    HttpStatus.valueOf(errorResponse.getStatusCode().value()).getReasonPhrase(),
+                    ex.getMessage(),
+                    request.getRequestURI(),
+                    "HTTP_" + errorResponse.getStatusCode().value()
+            );
+            return ResponseEntity.status(errorResponse.getStatusCode()).body(problem);
+        }
         log.error("Unhandled exception processing request to {}", request.getRequestURI(), ex);
         ProblemDetail problem = buildProblemDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR,

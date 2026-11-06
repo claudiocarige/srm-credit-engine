@@ -6,10 +6,12 @@ import com.claudiocarige.backendcreditengine.exchangerate.persistence.ExchangeRa
 import com.claudiocarige.backendcreditengine.exchangerate.persistence.ExchangeRateRepository;
 import com.claudiocarige.backendcreditengine.pricing.domain.model.CurrencyCode;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,18 +63,82 @@ class ExchangeRateServiceTest {
     }
 
     @Test
-    @DisplayName("Should translate uniqueness constraint violation into DuplicateExchangeRateException")
-    void shouldTranslateUniqueConstraintViolationIntoDuplicateExchangeRateException() {
+    @DisplayName("Should translate Hibernate ConstraintViolationException with SQLState 23505 and matching constraint into DuplicateExchangeRateException")
+    void shouldTranslateHibernateConstraintViolationExceptionWithSqlState23505() {
         BigDecimal rateBrl = new BigDecimal("5.432100");
         Instant effectiveAt = NOW.minusSeconds(3600);
 
-        when(repository.saveAndFlush(any(ExchangeRate.class)))
-                .thenThrow(new DataIntegrityViolationException("violates unique constraint \"uk_exchange_rates_currency_effective_at\""));
+        SQLException sqlEx = new SQLException("duplicate", "23505");
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                sqlEx,
+                "uk_exchange_rates_currency_effective_at"
+        );
+        DataIntegrityViolationException dive = new DataIntegrityViolationException("data integrity", cve);
+
+        when(repository.saveAndFlush(any(ExchangeRate.class))).thenThrow(dive);
 
         assertThatThrownBy(() -> service.registerExchangeRate(CurrencyCode.USD, rateBrl, effectiveAt))
                 .isInstanceOf(DuplicateExchangeRateException.class)
                 .hasMessageContaining("USD")
                 .hasMessageContaining(effectiveAt.toString());
+    }
+
+    @Test
+    @DisplayName("Should translate SQLException with SQLState 23505 and constraint in message into DuplicateExchangeRateException")
+    void shouldTranslateSQLExceptionWithSqlState23505AndConstraintInMessage() {
+        BigDecimal rateBrl = new BigDecimal("5.432100");
+        Instant effectiveAt = NOW.minusSeconds(3600);
+
+        SQLException sqlEx = new SQLException("duplicate uk_exchange_rates_currency_effective_at", "23505");
+        DataIntegrityViolationException dive = new DataIntegrityViolationException("data integrity", sqlEx);
+
+        when(repository.saveAndFlush(any(ExchangeRate.class))).thenThrow(dive);
+
+        assertThatThrownBy(() -> service.registerExchangeRate(CurrencyCode.USD, rateBrl, effectiveAt))
+                .isInstanceOf(DuplicateExchangeRateException.class)
+                .hasMessageContaining("USD")
+                .hasMessageContaining(effectiveAt.toString());
+    }
+
+    @Test
+    @DisplayName("Should rethrow DataIntegrityViolationException when constraint matches but SQLState is not 23505")
+    void shouldRethrowWhenConstraintMatchesButSqlStateIsNot23505() {
+        BigDecimal rateBrl = new BigDecimal("5.432100");
+        Instant effectiveAt = NOW.minusSeconds(3600);
+
+        SQLException sqlEx = new SQLException("not-null violation", "23502");
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "not null",
+                sqlEx,
+                "uk_exchange_rates_currency_effective_at"
+        );
+        DataIntegrityViolationException dive = new DataIntegrityViolationException("data integrity", cve);
+
+        when(repository.saveAndFlush(any(ExchangeRate.class))).thenThrow(dive);
+
+        assertThatThrownBy(() -> service.registerExchangeRate(CurrencyCode.USD, rateBrl, effectiveAt))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("Should rethrow DataIntegrityViolationException when SQLState is 23505 but constraint is different")
+    void shouldRethrowWhenSqlStateIs23505ButConstraintIsDifferent() {
+        BigDecimal rateBrl = new BigDecimal("5.432100");
+        Instant effectiveAt = NOW.minusSeconds(3600);
+
+        SQLException sqlEx = new SQLException("duplicate", "23505");
+        ConstraintViolationException cve = new ConstraintViolationException(
+                "duplicate key",
+                sqlEx,
+                "uk_other_table_constraint"
+        );
+        DataIntegrityViolationException dive = new DataIntegrityViolationException("data integrity", cve);
+
+        when(repository.saveAndFlush(any(ExchangeRate.class))).thenThrow(dive);
+
+        assertThatThrownBy(() -> service.registerExchangeRate(CurrencyCode.USD, rateBrl, effectiveAt))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test

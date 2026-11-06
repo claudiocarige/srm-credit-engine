@@ -12,5 +12,7 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, UUID
         CurrencyCode currency,
         Instant effectiveAt
     );
+
+    boolean existsByCurrencyAndEffectiveAt(CurrencyCode currency, Instant effectiveAt);
 }
 

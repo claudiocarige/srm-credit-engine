@@ -5,6 +5,7 @@ import com.claudiocarige.backendcreditengine.exchangerate.persistence.ExchangeRa
 import com.claudiocarige.backendcreditengine.exchangerate.persistence.ExchangeRateRepository;
 import com.claudiocarige.backendcreditengine.pricing.domain.model.CurrencyCode;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,10 +17,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,6 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ExchangeRateIntegrationTest {
 
+    private static final Instant FIXED_NOW = Instant.parse("2026-11-06T12:00:00Z");
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -39,8 +44,12 @@ class ExchangeRateIntegrationTest {
     @Autowired
     private ExchangeRateRepository repository;
 
+    @MockitoBean
+    private Clock clock;
+
     @BeforeEach
     void setUp() {
+        when(clock.instant()).thenReturn(FIXED_NOW);
         jdbcTemplate.execute("DELETE FROM exchange_rates");
     }
 
@@ -125,9 +134,11 @@ class ExchangeRateIntegrationTest {
     void shouldSelectHighestEffectiveAtBeforeCurrentInstant() throws Exception {
         Instant t1 = Instant.parse("2026-11-06T08:00:00Z");
         Instant t2 = Instant.parse("2026-11-06T09:00:00Z");
+        Instant tFuture = Instant.parse("2026-11-06T15:00:00Z");
 
-        repository.saveAndFlush(new ExchangeRate(CurrencyCode.USD, new BigDecimal("5.100000"), t1, Instant.now()));
-        repository.saveAndFlush(new ExchangeRate(CurrencyCode.USD, new BigDecimal("5.200000"), t2, Instant.now()));
+        repository.saveAndFlush(new ExchangeRate(CurrencyCode.USD, new BigDecimal("5.100000"), t1, FIXED_NOW));
+        repository.saveAndFlush(new ExchangeRate(CurrencyCode.USD, new BigDecimal("5.200000"), t2, FIXED_NOW));
+        repository.saveAndFlush(new ExchangeRate(CurrencyCode.USD, new BigDecimal("5.990000"), tFuture, FIXED_NOW));
 
         mockMvc.perform(get("/api/v1/exchange-rates/current"))
                 .andExpect(status().isOk())
@@ -141,7 +152,7 @@ class ExchangeRateIntegrationTest {
         Instant tPast = Instant.parse("2026-11-05T12:00:00Z");
         Instant tFuture = Instant.parse("2026-11-06T12:00:00Z");
 
-        repository.saveAndFlush(new ExchangeRate(CurrencyCode.USD, new BigDecimal("5.300000"), tFuture, Instant.now()));
+        repository.saveAndFlush(new ExchangeRate(CurrencyCode.USD, new BigDecimal("5.300000"), tFuture, FIXED_NOW));
 
         String jsonRetroactive = """
                 {
