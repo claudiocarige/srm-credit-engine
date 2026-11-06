@@ -233,7 +233,7 @@ Uma tarefa só pode receber `DONE` quando:
 | TASK-002 | Contratos de dados/API com OpenAPI Contract First | P0 | 001 | `VALIDATION` |
 | TASK-003 | Motor financeiro BRL + Strategy + C1/C2 | P0 | 001, 002 | `DONE` |
 | TASK-004 | Prazo comercial, conversão BRL→USD + C3 | P0 | 003 | `DONE` |
-| TASK-005 | PostgreSQL, Flyway e modelo persistente inicial | P0 | 002 | `PENDING` |
+| TASK-005 | PostgreSQL, Flyway e modelo persistente inicial | P0 | 002 | `DONE` |
 | TASK-006 | Currency Engine: histórico, vigência e API manual | P0 | 004, 005 | `PENDING` |
 | TASK-007 | API REST de simulação + conformidade OpenAPI e Swagger UI | P0 | 003, 004, 006 | `PENDING` |
 | TASK-008 | Cadastro/identificação mínima de cedentes e recebíveis | P0 | 002, 005 | `PENDING` |
@@ -372,7 +372,7 @@ mantendo execução e aprovação individuais.
     - Modelo relacional normalizado conforme o domínio aprovado.
     - Migrations reproduzíveis em PostgreSQL.
     - Testes de integração executados com Testcontainers.
-- **Evidências:** `PENDENTE`.
+- **Evidências:** Ver [`docs/task-plans/TASK-005.md`](docs/task-plans/TASK-005.md) e [`docs/er-diagram.md`](docs/er-diagram.md) — Migrations Flyway `V1__create_assignors_and_receivables.sql` e `V2__create_exchange_rates.sql` implementadas e validadas; entidades JPA `Assignor`, `Receivable`, `ExchangeRate` e enum `ReceivableStatus` mapeados e validados contra schema PostgreSQL via Hibernate `ddl-auto=validate`; 33 novos testes adicionados (12 unitários + 21 de integração PostgreSQL/Testcontainers cobrindo constraints PK, FK RESTRICT, UK, CHECKs de dígitos/regex/faixa monetária/câmbio, LAZY loading e metadados). Suíte completa Maven com 90 testes passando sem regressões (`BUILD SUCCESS`). Diagrama ER criado em Mermaid.
 
 ### TASK-006 — Implementar Currency Engine
 - **Objetivo:** cadastrar e recuperar a cotação vigente para uma operação. 

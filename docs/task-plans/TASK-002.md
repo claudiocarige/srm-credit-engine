@@ -119,7 +119,7 @@
 | 1.6 | Observação em `srm-credit-engine.yaml` e `contracts.md` esclarecendo que os exemplos dos *Golden Cases* usam data de operação fixa (`2026-11-04`) para demonstração determinística, enquanto a execução real utiliza o `Clock` do backend (`Clock` controlado nos testes a partir da `TASK-004`) | Evitar interpretação equivocada caso o mesmo payload de exemplo seja executado em outra data | Aprovado (`AUTORIZADO`, 2026-11-05) |
 
 ## 12. Resultado da Execução
-- **Status:** `VALIDATION` (entregáveis documentais das Revisões `1.3` a `1.6` criados e validados estruturalmente; aguardando aprovação final do responsável para marcar `DONE`).
+- **Status:** `APPROVED` (entregáveis documentais das Revisões `1.3` a `1.6` criados e validados estruturalmente; aguardando aprovação final do responsável para marcar `DONE`).
 - **Arquivos realmente alterados:**
   - `docs/openapi/srm-credit-engine.yaml` (criado na Revisão `1.4`, endurecido na Revisão `1.5` e documentado com nota de `Clock` na Revisão `1.6` — OpenAPI `3.0.3`, 10 operações em 8 paths sob `/api/v1`, `additionalProperties: false` nos 4 requests, strings decimais estritamente positivas na entrada, `ProblemDetail` `application/problem+json` com `errorCode`, `Idempotency-Key`, `Retry-After` e exemplos C1, C2 e C3).
   - `docs/contracts.md` (criado na Revisão `1.3`, refatorado na Revisão `1.4` e atualizado até a Revisão `1.6` com `errorCode`, política de rejeição de propriedades JSON desconhecidas e nota de `Clock` nos exemplos).

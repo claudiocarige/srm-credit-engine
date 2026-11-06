@@ -83,6 +83,30 @@ Registrar **as decisões que orientam o início da implementação**, com justif
 
 **Rastreabilidade:** TASK-003 (motor financeiro e Strategy) e TASK-004 (conversão cambial pura).
 
+### DEC-005 — Prazo comercial separado do cálculo (`APPROVED`)
+
+**Decisão.** O `PricingEngine` recebe `termMonths` inteiro `>= 1`, sem conhecimento de datas ou relógio do sistema.
+
+Quando a entrada fornecer `dueDate`, a camada de aplicação obtém `operationDate` a partir da data de referência definida pelo backend e utiliza `CommercialTermCalculator`, componente Java puro localizado em `pricing.domain.calculation`.
+
+O componente calcula `days = DAYS.between(operationDate, dueDate)`, rejeita `days <= 0` e retorna `termMonths = ceil(days / 30)`, utilizando aritmética inteira para evitar imprecisões.
+
+A obtenção da data de referência ocorre na camada de aplicação, permitindo utilização de `Clock` injetável e testes determinísticos.
+
+**Justificativa.** Separar o cálculo do prazo comercial da precificação financeira preserva o princípio da responsabilidade única (SRP) e facilita testes isolados.
+
+A regra representa uma **premissa provisória do MVP**:
+
+- 1 a 30 dias correspondem a 1 mês.
+- 31 a 60 dias correspondem a 2 meses.
+- 61 a 90 dias correspondem a 3 meses.
+
+O cálculo considera dias corridos, inclusive em anos bissextos, sem tratamento de dias úteis ou feriados bancários.
+
+**Golden Cases.** Não aplicar a conversão de datas aos casos C1, C2 e C3, que já informam os prazos diretamente (3, 2 e 3 meses, respectivamente).
+
+**Rastreabilidade:** TASK-004 (cálculo de prazo comercial) e TASK-007 (orquestração na camada de aplicação).
+
 ## DEC-007 — Liquidação, idempotência e concorrência (`APPROVED`)
 
 **Decisão.** Processar cada lote integralmente em **uma transação PostgreSQL**, abrangendo efeitos financeiros, histórico auditável e registro definitivo de idempotência. Exigir `Idempotency-Key` persistente (armazenada apenas internamente, sem exposição nas consultas gerais de liquidações) e `request_hash` SHA-256 de payload canônico determinístico (`assignorId`, `paymentCurrency` e `receivableIds` ordenados sem duplicatas), com restrição `UNIQUE` na chave. A verificação da `Idempotency-Key` tem **precedência estrita** sobre a validação de estado dos títulos: criação inédita retorna **`201 Created`**; replay após commit com mesma chave e mesmo hash retorna **`200 OK`** com o snapshot original imutável (nunca `409 RECEIVABLE_ALREADY_SETTLED`); mesma chave com hash divergente retorna **`409 Conflict` (`IDEMPOTENCY_PAYLOAD_MISMATCH`)**.
