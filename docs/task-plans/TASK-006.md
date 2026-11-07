@@ -3,7 +3,7 @@
 ## 1. Identificação
 - **Tarefa:** `TASK-006` — Currency Engine: Histórico, Vigência e API Manual de Câmbio.
 - **Objetivo:** disponibilizar o registro manual append-only de cotações cambiais (USD/BRL) e a recuperação determinística da taxa vigente para a operação (`effectiveAt <= instante da operação`), expondo endpoints REST estritamente aderentes à especificação OpenAPI oficial (`docs/openapi/srm-credit-engine.yaml`), com controle temporal por `Clock` injetável, validação de escala cambial, rejeição estrita de propriedades JSON desconhecidas e tratamento padronizado de erros via `ProblemDetail` nativo do Spring.
-- **Status do planejamento:** `PLANO PROPOSTO — AGUARDANDO AUTORIZAÇÃO DE EXECUÇÃO`.
+- **Status do planejamento:** `CONCLUÍDO (DONE)`.
 - **Referências:**
   - `SPEC.md` (§§1, 3);
   - `DECISIONS.md` (`DEC-001`, `DEC-002`, `DEC-003`, `DEC-006`, `DEC-008`, `DEC-010`, `DEC-013`);
@@ -437,13 +437,18 @@ A verificação da TASK-006 será composta por testes unitários, testes de cama
 
 ## 15. Resultados e Evidências de Execução
 
-- **Estado atual:** `VALIDATION`.
+- **Estado atual:** `CONCLUÍDO (DONE)`.
+- **Aprovação final humana:** Recebida em 2026-11-06T17:44:43-03:00.
 - **Autorização humana:** Recebida explicitamente em 2026-11-06T13:23:42-03:00.
 - **Subtarefas executadas:** ST-01 a ST-12 concluídas com sucesso.
 
 ### 15.1. Evidências dos Testes Automatizados
-- **Testes Unitários de Serviço (`ExchangeRateServiceTest`):** 6 testes executados e aprovados (`Tests run: 6, Failures: 0, Errors: 0, Skipped: 0`).
-- **Testes Web de Contrato (`ExchangeRateControllerTest`):** 11 testes executados e aprovados (`Tests run: 11, Failures: 0, Errors: 0, Skipped: 0`). Comprovam:
+- **Testes Unitários do Initializer (`ExchangeRateDevDataInitializerTest`):** 2 testes executados e aprovados (`Tests run: 2, Failures: 0, Errors: 0, Skipped: 0`). Comprovam que cotações prévias não bloqueiam o seed e que a verificação pontual por par exato `(currency, effectiveAt)` é idempotente.
+- **Testes Unitários de Serviço (`ExchangeRateServiceTest`):** 9 testes executados e aprovados (`Tests run: 9, Failures: 0, Errors: 0, Skipped: 0`). Comprovam:
+  - Tradução estruturada via Hibernate `ConstraintViolationException` com SQLState `23505` e constraint `uk_exchange_rates_currency_effective_at`.
+  - Tradução via `SQLException` com SQLState `23505` e constraint no texto.
+  - Repasse estrito de violações com SQLState diferente ou constraint diferente sem mascaramento.
+- **Testes Web de Contrato (`ExchangeRateControllerTest`):** 14 testes executados e aprovados (`Tests run: 14, Failures: 0, Errors: 0, Skipped: 0`). Comprovam:
   - `POST /api/v1/exchange-rates` com retorno HTTP 201 e sem header `Location`.
   - Rejeição de propriedades JSON desconhecidas com HTTP 400 e `errorCode: VALIDATION_ERROR`.
   - Rejeição de `rateBrl` enviado como número JSON com HTTP 400 `VALIDATION_ERROR`.
@@ -455,18 +460,22 @@ A verificação da TASK-006 será composta por testes unitários, testes de cama
   - `GET /api/v1/exchange-rates/current` retornando HTTP 422 `EXCHANGE_RATE_UNAVAILABLE` quando não há cotação vigente.
   - `GET /api/v1/exchange-rates/current?currency=BRL` retornando HTTP 400 `VALIDATION_ERROR` antes de chamar serviço/repositório.
   - `GET /api/v1/exchange-rates/current?currency=EUR` retornando HTTP 400 `VALIDATION_ERROR` antes de chamar serviço/repositório.
+  - Rota inexistente retornando HTTP 404 com `errorCode: RESOURCE_NOT_FOUND`.
+  - Método HTTP não permitido (PUT) retornando HTTP 405 com `errorCode: METHOD_NOT_ALLOWED`.
+  - Exceção interna não tratada retornando HTTP 500 com `errorCode: INTERNAL_ERROR`.
 - **Testes de Integração com PostgreSQL Real (`ExchangeRateIntegrationTest`):** 5 testes executados e aprovados via Testcontainers (`Tests run: 5, Failures: 0, Errors: 0, Skipped: 0`). Comprovam:
   - Round-trip completo HTTP POST + GET no PostgreSQL real.
   - Disparo real da constraint `uk_exchange_rates_currency_effective_at` traduzida em HTTP 409.
   - Rejeição de sub-microssegundos na camada HTTP.
-  - Consulta de vigência selecionando o maior `effectiveAt <= clock.instant()`.
+  - Consulta de vigência determinística com `Clock` fixo injetado selecionando o maior `effectiveAt <= clock.instant()` e ignorando cotações com vigência futura.
   - Preservação do histórico cambial em inserções retroativas.
 - **Suíte Completa do Projeto (`mvn test`):**
-  - **113 testes executados, 0 falhas, 0 erros, 0 pulados (`BUILD SUCCESS`).**
+  - **121 testes executados, 0 falhas, 0 erros, 0 pulados (`BUILD SUCCESS`).**
   - Nenhuma regressão sobre os 90 testes existentes das tarefas anteriores.
 - **Conformidade de Estilo:** `git diff --check` executado sem erros.
 
 ### 15.2. Desvios Técnicos Registrados
 1. **Jackson 3 (Spring Boot 4.1.2):** O starter do Spring Boot 4.1.2 adota o Jackson 3 (`tools.jackson.core:jackson-databind:3.1.7`). O deserializador estrito `StrictStringDeserializer` estende `tools.jackson.databind.ValueDeserializer<String>` e utiliza a anotação `tools.jackson.databind.annotation.JsonDeserialize`, garantindo compatibilidade nativa com a versão adotada sem dependências concorrentes.
-2. **Desacoplamento do Driver JDBC:** O `ExchangeRateService` inspeciona `java.sql.SQLException` (SQLState 23505) diretamente via JDK padrão, mantendo a camada de aplicação desacoplada de classes do driver PostgreSQL (`org.postgresql.util.PSQLException`, que é dependência de escopo `runtime`).
+2. **Tratamento Estruturado de Violações:** O `ExchangeRateService` inspeciona prioritariamente `org.hibernate.exception.ConstraintViolationException` e `java.sql.SQLException` exigindo cumulativamente SQLState `23505` e o nome da constraint `uk_exchange_rates_currency_effective_at`.
+3. **Resolução de Regressões HTTP no Handler Global:** A precedência `@Order(Ordered.HIGHEST_PRECEDENCE)` foi mantida com o acréscimo de handlers específicos para `NoResourceFoundException` (404) e `HttpRequestMethodNotSupportedException` (405), além do suporte a `ErrorResponse` no handler genérico, impedindo que falhas de roteamento padrão do Spring MVC fossem convertidas em HTTP 500.
 
