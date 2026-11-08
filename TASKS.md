@@ -235,7 +235,7 @@ Uma tarefa só pode receber `DONE` quando:
 | TASK-004 | Prazo comercial, conversão BRL→USD + C3 | P0 | 003 | `DONE` |
 | TASK-005 | PostgreSQL, Flyway e modelo persistente inicial | P0 | 002 | `DONE` |
 | TASK-006 | Currency Engine: histórico, vigência e API manual | P0 | 004, 005 | `DONE` |
-| TASK-007 | API REST de simulação + conformidade OpenAPI e Swagger UI | P0 | 003, 004, 006 | `PENDING` |
+| TASK-007 | API REST de simulação + conformidade OpenAPI e Swagger UI | P0 | 003, 004, 006 | `READY` |
 | TASK-008 | Cadastro/identificação mínima de cedentes e recebíveis | P0 | 002, 005 | `PENDING` |
 | TASK-009 | Liquidação de lote ACID + auditoria imutável | P0 | 006, 007, 008 | `PENDING` |
 | TASK-010 | Idempotência, dupla liquidação e concorrência | P0 | 009 | `PENDING` |

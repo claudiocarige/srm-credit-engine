@@ -3,7 +3,7 @@
 ## 1. Identificação
 - **Tarefa:** `TASK-007` — API REST de Simulação e Integração OpenAPI/Swagger UI.
 - **Objetivo:** disponibilizar o endpoint stateless de simulação de precificação de recebíveis em tempo real (`POST /api/v1/simulations`) estritamente aderente ao contrato oficial (`docs/openapi/srm-credit-engine.yaml`), integrando o motor financeiro puro (`PricingEngine`, `CommercialTermCalculator`, `CurrencyConverter`) e o Currency Engine (`ExchangeRateService`), com controle temporal único via `Clock` UTC injetável, rejeição de propriedades JSON desconhecidas e de coerções numéricas em strings decimais, tratamento padronizado de erros via `ProblemDetail` e disponibilização do Swagger UI referenciando exclusivamente o contrato OpenAPI oficial como fonte única de verdade.
-- **Status do planejamento:** `PLANO PROPOSTO — AGUARDANDO AUTORIZAÇÃO DE EXECUÇÃO`.
+- **Status do planejamento:** `PLANO APROVADO (READY) — AGUARDANDO INÍCIO DA IMPLEMENTAÇÃO`.
 - **Referências:**
   - `SPEC.md` (§§1, 2, 3 e 5);
   - `DECISIONS.md`:
@@ -386,5 +386,5 @@ Utilizando instâncias reais de `PricingEngine`, `CommercialTermCalculator` e `C
 
 ## 15. Resultados e Evidências de Execução
 
-- **Estado atual:** `AGUARDANDO AUTORIZAÇÃO DE EXECUÇÃO (G-01)`.
-- **Evidências:** Serão preenchidas após a autorização humana e execução das subtarefas ST-01 a ST-10.
+- **Estado atual:** `READY` (Plano técnico aprovado em 2026-11-07T13:19:44-03:00).
+- **Evidências:** Serão preenchidas durante a execução das subtarefas ST-01 a ST-10.
