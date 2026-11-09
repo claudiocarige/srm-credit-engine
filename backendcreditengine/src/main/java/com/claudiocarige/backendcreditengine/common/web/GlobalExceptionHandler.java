@@ -1,9 +1,12 @@
 package com.claudiocarige.backendcreditengine.common.web;
 
+import com.claudiocarige.backendcreditengine.assignor.application.exception.AssignorNotFoundException;
 import com.claudiocarige.backendcreditengine.exchangerate.application.exception.DuplicateExchangeRateException;
 import com.claudiocarige.backendcreditengine.exchangerate.application.exception.ExchangeRateUnavailableException;
 import com.claudiocarige.backendcreditengine.exchangerate.application.exception.InvalidCurrencyException;
-import com.claudiocarige.backendcreditengine.simulation.application.exception.InvalidDueDateException;
+import com.claudiocarige.backendcreditengine.common.exception.InvalidDueDateException;
+import com.claudiocarige.backendcreditengine.receivable.application.exception.DuplicateReceivableDocumentException;
+import com.claudiocarige.backendcreditengine.receivable.application.exception.ReceivableNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Clock;
@@ -23,6 +26,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -39,6 +43,9 @@ public class GlobalExceptionHandler {
     private static final String ERROR_CODE_DUPLICATE_RATE = "DUPLICATE_EXCHANGE_RATE_EFFECTIVE_AT";
     private static final String ERROR_CODE_RATE_UNAVAILABLE = "EXCHANGE_RATE_UNAVAILABLE";
     private static final String ERROR_CODE_INVALID_DUE_DATE = "INVALID_DUE_DATE";
+    private static final String ERROR_CODE_ASSIGNOR_NOT_FOUND = "ASSIGNOR_NOT_FOUND";
+    private static final String ERROR_CODE_RECEIVABLE_NOT_FOUND = "RECEIVABLE_NOT_FOUND";
+    private static final String ERROR_CODE_DUPLICATE_RECEIVABLE_DOC = "DUPLICATE_RECEIVABLE_DOCUMENT";
     private static final String ERROR_CODE_RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND";
     private static final String ERROR_CODE_METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED";
     private static final String ERROR_CODE_INTERNAL_ERROR = "INTERNAL_ERROR";
@@ -161,6 +168,68 @@ public class GlobalExceptionHandler {
                 ERROR_CODE_RATE_UNAVAILABLE
         );
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(problem);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ProblemDetail> handleMissingServletRequestParameter(
+            MissingServletRequestParameterException ex,
+            HttpServletRequest request
+    ) {
+        String message = ex.getParameterName() + " is required";
+        ProblemDetail problem = buildProblemDetail(
+                HttpStatus.BAD_REQUEST,
+                "Validation Error",
+                "Missing required parameter: " + ex.getParameterName(),
+                request.getRequestURI(),
+                ERROR_CODE_VALIDATION_ERROR
+        );
+        problem.setProperty("fieldErrors", List.of(new FieldErrorDetail(ex.getParameterName(), message)));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+    }
+
+    @ExceptionHandler(AssignorNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleAssignorNotFound(
+            AssignorNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = buildProblemDetail(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                ex.getMessage(),
+                request.getRequestURI(),
+                ERROR_CODE_ASSIGNOR_NOT_FOUND
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+    }
+
+    @ExceptionHandler(ReceivableNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleReceivableNotFound(
+            ReceivableNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = buildProblemDetail(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                ex.getMessage(),
+                request.getRequestURI(),
+                ERROR_CODE_RECEIVABLE_NOT_FOUND
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+    }
+
+    @ExceptionHandler(DuplicateReceivableDocumentException.class)
+    public ResponseEntity<ProblemDetail> handleDuplicateReceivableDocument(
+            DuplicateReceivableDocumentException ex,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = buildProblemDetail(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                ex.getMessage(),
+                request.getRequestURI(),
+                ERROR_CODE_DUPLICATE_RECEIVABLE_DOC
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
     }
 
     @ExceptionHandler(InvalidDueDateException.class)
