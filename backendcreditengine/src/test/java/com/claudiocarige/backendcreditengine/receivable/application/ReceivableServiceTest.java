@@ -3,6 +3,7 @@ package com.claudiocarige.backendcreditengine.receivable.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -19,7 +20,6 @@ import com.claudiocarige.backendcreditengine.receivable.domain.ReceivableStatus;
 import com.claudiocarige.backendcreditengine.receivable.persistence.Receivable;
 import com.claudiocarige.backendcreditengine.receivable.persistence.ReceivableRepository;
 import java.math.BigDecimal;
-import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -27,7 +27,6 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +34,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.ServerErrorMessage;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -168,23 +169,19 @@ class ReceivableServiceTest {
     }
 
     @Test
-    @DisplayName("Deve traduzir DataIntegrityViolationException para DuplicateReceivableDocumentException quando SQLState=23505 e constraint=uk_receivables_assignor_document_number")
+    @DisplayName("Deve traduzir DataIntegrityViolationException para DuplicateReceivableDocumentException quando PSQLException possui SQLState=23505 e constraint=uk_receivables_assignor_document_number")
     void shouldTranslatePostgresUniqueConstraintViolationToDuplicateReceivableDocumentException() {
         Assignor assignor = createAssignor(ASSIGNOR_ID);
         when(assignorRepository.findById(ASSIGNOR_ID)).thenReturn(Optional.of(assignor));
         when(receivableRepository.existsByAssignor_IdAndDocumentNumber(ASSIGNOR_ID, "DUP-2026-0042")).thenReturn(false);
 
-        SQLException sqlEx = new SQLException(
-                "duplicate key value violates unique constraint \"uk_receivables_assignor_document_number\"",
-                "23505"
-        );
-        ConstraintViolationException cve = new ConstraintViolationException(
-                "could not execute statement",
-                sqlEx,
-                "uk_receivables_assignor_document_number"
-        );
+        ServerErrorMessage serverErrorMessage = mock(ServerErrorMessage.class);
+        when(serverErrorMessage.getSQLState()).thenReturn("23505");
+        when(serverErrorMessage.getConstraint()).thenReturn("uk_receivables_assignor_document_number");
+
+        PSQLException psqlException = new PSQLException(serverErrorMessage);
         DataIntegrityViolationException dive = new DataIntegrityViolationException(
-                "could not execute statement", cve
+                "could not execute statement", psqlException
         );
 
         when(receivableRepository.saveAndFlush(any(Receivable.class))).thenThrow(dive);
@@ -201,23 +198,46 @@ class ReceivableServiceTest {
     }
 
     @Test
-    @DisplayName("Não deve mascarar DataIntegrityViolationException de outra constraint ou outro SQLState")
-    void shouldRethrowDataIntegrityViolationFromDifferentConstraintOrSqlState() {
+    @DisplayName("Não deve mascarar DataIntegrityViolationException quando constraint é diferente mesmo com SQLState 23505")
+    void shouldRethrowDataIntegrityViolationFromDifferentConstraint() {
         Assignor assignor = createAssignor(ASSIGNOR_ID);
         when(assignorRepository.findById(ASSIGNOR_ID)).thenReturn(Optional.of(assignor));
         when(receivableRepository.existsByAssignor_IdAndDocumentNumber(ASSIGNOR_ID, "DUP-2026-0042")).thenReturn(false);
 
-        SQLException sqlEx = new SQLException(
-                "insert or update on table \"receivables\" violates foreign key constraint \"fk_receivables_assignor\"",
-                "23503"
-        );
-        ConstraintViolationException cve = new ConstraintViolationException(
-                "foreign key violation",
-                sqlEx,
-                "fk_receivables_assignor"
-        );
+        ServerErrorMessage serverErrorMessage = mock(ServerErrorMessage.class);
+        when(serverErrorMessage.getSQLState()).thenReturn("23505");
+        when(serverErrorMessage.getConstraint()).thenReturn("uk_other_constraint");
+
+        PSQLException psqlException = new PSQLException(serverErrorMessage);
         DataIntegrityViolationException dive = new DataIntegrityViolationException(
-                "foreign key violation", cve
+                "unique violation on another constraint", psqlException
+        );
+
+        when(receivableRepository.saveAndFlush(any(Receivable.class))).thenThrow(dive);
+
+        assertThatThrownBy(() -> receivableService.createReceivable(
+                ASSIGNOR_ID,
+                "dup-2026-0042",
+                ReceivableType.DUPLICATA_MERCANTIL,
+                new BigDecimal("100000.00"),
+                LocalDate.of(2027, 2, 2)
+        ))
+                .isSameAs(dive);
+    }
+
+    @Test
+    @DisplayName("Não deve mascarar DataIntegrityViolationException de outro SQLState")
+    void shouldRethrowDataIntegrityViolationFromDifferentSqlState() {
+        Assignor assignor = createAssignor(ASSIGNOR_ID);
+        when(assignorRepository.findById(ASSIGNOR_ID)).thenReturn(Optional.of(assignor));
+        when(receivableRepository.existsByAssignor_IdAndDocumentNumber(ASSIGNOR_ID, "DUP-2026-0042")).thenReturn(false);
+
+        ServerErrorMessage serverErrorMessage = mock(ServerErrorMessage.class);
+        when(serverErrorMessage.getSQLState()).thenReturn("23503");
+
+        PSQLException psqlException = new PSQLException(serverErrorMessage);
+        DataIntegrityViolationException dive = new DataIntegrityViolationException(
+                "foreign key violation", psqlException
         );
 
         when(receivableRepository.saveAndFlush(any(Receivable.class))).thenThrow(dive);

@@ -11,7 +11,6 @@ import com.claudiocarige.backendcreditengine.receivable.domain.ReceivableStatus;
 import com.claudiocarige.backendcreditengine.receivable.persistence.Receivable;
 import com.claudiocarige.backendcreditengine.receivable.persistence.ReceivableRepository;
 import java.math.BigDecimal;
-import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -21,6 +20,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
+import org.postgresql.util.PSQLException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -116,16 +116,18 @@ public class ReceivableService {
     private boolean isDuplicateReceivableConstraint(DataIntegrityViolationException ex) {
         Throwable cause = ex;
         while (cause != null) {
-            if (cause instanceof ConstraintViolationException cve) {
-                boolean matchesSqlState = SQL_STATE_UNIQUE_VIOLATION.equals(cve.getSQLState());
-                boolean matchesConstraint = UK_RECEIVABLES_ASSIGNOR_DOCUMENT_NUMBER.equalsIgnoreCase(cve.getConstraintName());
+            if (cause instanceof PSQLException psql) {
+                boolean matchesSqlState = SQL_STATE_UNIQUE_VIOLATION.equals(psql.getSQLState());
+                String constraint = psql.getServerErrorMessage() != null
+                        ? psql.getServerErrorMessage().getConstraint()
+                        : null;
+                boolean matchesConstraint = UK_RECEIVABLES_ASSIGNOR_DOCUMENT_NUMBER.equalsIgnoreCase(constraint);
                 if (matchesSqlState && matchesConstraint) {
                     return true;
                 }
-            } else if (cause instanceof SQLException sqlEx) {
-                boolean matchesSqlState = SQL_STATE_UNIQUE_VIOLATION.equals(sqlEx.getSQLState());
-                boolean matchesConstraint = sqlEx.getMessage() != null
-                        && sqlEx.getMessage().toLowerCase(Locale.ROOT).contains(UK_RECEIVABLES_ASSIGNOR_DOCUMENT_NUMBER);
+            } else if (cause instanceof ConstraintViolationException cve) {
+                boolean matchesSqlState = SQL_STATE_UNIQUE_VIOLATION.equals(cve.getSQLState());
+                boolean matchesConstraint = UK_RECEIVABLES_ASSIGNOR_DOCUMENT_NUMBER.equalsIgnoreCase(cve.getConstraintName());
                 if (matchesSqlState && matchesConstraint) {
                     return true;
                 }

@@ -373,6 +373,18 @@ class ReceivableControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/receivables?assignorId=abc: Retorna 400 VALIDATION_ERROR quando assignorId não é UUID válido")
+    void shouldReturn400WhenAssignorIdParamIsInvalidUuid() throws Exception {
+        mockMvc.perform(get("/api/v1/receivables")
+                        .param("assignorId", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.errorCode", is("VALIDATION_ERROR")));
+
+        verifyNoInteractions(receivableService);
+    }
+
+    @Test
     @DisplayName("GET /api/v1/receivables: Retorna 400 VALIDATION_ERROR quando status é inválido")
     void shouldReturn400WhenStatusParamIsInvalid() throws Exception {
         mockMvc.perform(get("/api/v1/receivables")
@@ -416,6 +428,17 @@ class ReceivableControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.errorCode", is("RECEIVABLE_NOT_FOUND")));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/receivables/abc: Retorna 400 VALIDATION_ERROR quando id no path não é UUID válido")
+    void shouldReturn400WhenPathIdIsInvalidUuid() throws Exception {
+        mockMvc.perform(get("/api/v1/receivables/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.errorCode", is("VALIDATION_ERROR")));
+
+        verifyNoInteractions(receivableService);
     }
 
     private Receivable createSampleReceivable(
