@@ -20,13 +20,13 @@ class DatabaseSchemaTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("Deve verificar que as migrations V1 e V2 foram aplicadas com sucesso pelo Flyway")
+    @DisplayName("Deve verificar que as migrations V1, V2 e V3 foram aplicadas com sucesso pelo Flyway")
     void shouldVerifyFlywayMigrationsAppliedSuccessfully() {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 "SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank"
         );
 
-        assertThat(rows).hasSize(2);
+        assertThat(rows).hasSize(3);
 
         assertThat(rows.get(0).get("version")).isEqualTo("1");
         assertThat(rows.get(0).get("description")).isEqualTo("create assignors and receivables");
@@ -35,6 +35,10 @@ class DatabaseSchemaTest {
         assertThat(rows.get(1).get("version")).isEqualTo("2");
         assertThat(rows.get(1).get("description")).isEqualTo("create exchange rates");
         assertThat(rows.get(1).get("success")).isEqualTo(true);
+
+        assertThat(rows.get(2).get("version")).isEqualTo("3");
+        assertThat(rows.get(2).get("description")).isEqualTo("seed assignors");
+        assertThat(rows.get(2).get("success")).isEqualTo(true);
     }
 
     @Test

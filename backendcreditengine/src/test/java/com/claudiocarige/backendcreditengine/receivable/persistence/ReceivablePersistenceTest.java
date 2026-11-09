@@ -6,6 +6,7 @@ import com.claudiocarige.backendcreditengine.pricing.domain.model.ReceivableType
 import com.claudiocarige.backendcreditengine.receivable.domain.ReceivableStatus;
 import jakarta.persistence.EntityManager;
 import org.hibernate.Hibernate;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,19 @@ class ReceivablePersistenceTest {
                 assignorId1, "11122233344", "Cedente 1");
         jdbcTemplate.update("INSERT INTO assignors (id, document, name, created_at) VALUES (?, ?, ?, now())",
                 assignorId2, "55566677788", "Cedente 2");
+    }
+
+    @AfterEach
+    void tearDown() {
+        jdbcTemplate.execute("DELETE FROM receivables");
+        jdbcTemplate.execute("DELETE FROM assignors");
+        jdbcTemplate.execute("""
+                INSERT INTO assignors (id, document, name, created_at)
+                VALUES
+                    ('8f14e45f-ceea-467a-9a38-1b4c9f8b0001', '12345678000190', 'Industria Alfa Ltda', '2026-11-04T00:00:00Z'),
+                    ('9a25f560-dffb-478b-8b49-2c5da09c0002', '98765432000110', 'Comercio Beta S.A.', '2026-11-04T00:00:00Z')
+                ON CONFLICT (id) DO NOTHING
+                """);
     }
 
     @Test
