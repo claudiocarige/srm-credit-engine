@@ -28,3 +28,14 @@ management:
   endpoint:
     health:
       show-details: never
+
+srm:
+  pricing:
+    base-rate-monthly: "0.010000"
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    url: /openapi/srm-credit-engine.yaml
+    disable-swagger-default-url: true

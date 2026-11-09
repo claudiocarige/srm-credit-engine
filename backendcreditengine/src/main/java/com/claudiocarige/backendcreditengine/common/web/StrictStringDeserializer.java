@@ -1,4 +1,4 @@
-package com.claudiocarige.backendcreditengine.exchangerate.web.dto;
+package com.claudiocarige.backendcreditengine.common.web;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.JsonParser;

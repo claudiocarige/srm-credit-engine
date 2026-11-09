@@ -3,6 +3,7 @@ package com.claudiocarige.backendcreditengine.common.web;
 import com.claudiocarige.backendcreditengine.exchangerate.application.exception.DuplicateExchangeRateException;
 import com.claudiocarige.backendcreditengine.exchangerate.application.exception.ExchangeRateUnavailableException;
 import com.claudiocarige.backendcreditengine.exchangerate.application.exception.InvalidCurrencyException;
+import com.claudiocarige.backendcreditengine.simulation.application.exception.InvalidDueDateException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Clock;
@@ -37,6 +38,7 @@ public class GlobalExceptionHandler {
     private static final String ERROR_CODE_VALIDATION_ERROR = "VALIDATION_ERROR";
     private static final String ERROR_CODE_DUPLICATE_RATE = "DUPLICATE_EXCHANGE_RATE_EFFECTIVE_AT";
     private static final String ERROR_CODE_RATE_UNAVAILABLE = "EXCHANGE_RATE_UNAVAILABLE";
+    private static final String ERROR_CODE_INVALID_DUE_DATE = "INVALID_DUE_DATE";
     private static final String ERROR_CODE_RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND";
     private static final String ERROR_CODE_METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED";
     private static final String ERROR_CODE_INTERNAL_ERROR = "INTERNAL_ERROR";
@@ -152,13 +154,28 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         ProblemDetail problem = buildProblemDetail(
-                HttpStatus.UNPROCESSABLE_ENTITY,
+                HttpStatus.UNPROCESSABLE_CONTENT,
                 "Unprocessable Entity",
                 ex.getMessage(),
                 request.getRequestURI(),
                 ERROR_CODE_RATE_UNAVAILABLE
         );
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(problem);
+    }
+
+    @ExceptionHandler(InvalidDueDateException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidDueDate(
+            InvalidDueDateException ex,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = buildProblemDetail(
+                HttpStatus.UNPROCESSABLE_CONTENT,
+                "Unprocessable Entity",
+                ex.getMessage(),
+                request.getRequestURI(),
+                ERROR_CODE_INVALID_DUE_DATE
+        );
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(problem);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
