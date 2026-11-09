@@ -236,7 +236,7 @@ Uma tarefa só pode receber `DONE` quando:
 | TASK-005 | PostgreSQL, Flyway e modelo persistente inicial | P0 | 002 | `DONE` |
 | TASK-006 | Currency Engine: histórico, vigência e API manual | P0 | 004, 005 | `DONE` |
 | TASK-007 | API REST de simulação + conformidade OpenAPI e Swagger UI | P0 | 003, 004, 006 | `DONE` |
-| TASK-008 | Cadastro/identificação mínima de cedentes e recebíveis | P0 | 002, 005 | `PENDING` |
+| TASK-008 | Cadastro/identificação mínima de cedentes e recebíveis | P0 | 002, 005 | `DONE` |
 | TASK-009 | Liquidação de lote ACID + auditoria imutável | P0 | 006, 007, 008 | `PENDING` |
 | TASK-010 | Idempotência, dupla liquidação e concorrência | P0 | 009 | `PENDING` |
 | TASK-011 | API do extrato com filtros e paginação no banco | P0 | 010 | `PENDING` |
@@ -422,7 +422,7 @@ mantendo execução e aprovação individuais.
 - **Escopo:** somente criação/consulta e estado mínimo indispensáveis; validar vínculo com cedente, integridade e elegibilidade, sem workflow bancário ou autorização avançada. Implementar os endpoints de cadastro, consulta individual e listagem de recebíveis conforme o contrato OpenAPI aprovado, incluindo header Location, schemas, rejeição de propriedades JSON desconhecidas pelo Jackson em `CreateReceivableRequest` e validações.
 - **Referências:** SPEC §§1 e 3; DEC-007, DEC-008, DEC-014. ver [Contrato OpenAPI](docs/openapi/srm-credit-engine.yaml).
 - **Aceite/testes:** IDs/vínculos consistentes, valores (`faceValueBrl >= 0.01`, rejeitando `"0.00"`) e datas válidos, rejeição de dados inválidos ou duplicados conforme contrato, constraints comprovadas em PostgreSQL; sem criar regras não especificadas. Validar a conformidade contratual dos endpoints, incluindo comprovação via `MockMvc` da rejeição de propriedades JSON desconhecidas (`HTTP 400` + `errorCode: VALIDATION_ERROR`), criação com HTTP 201, consulta com HTTP 200, recursos inexistentes com HTTP 404, conflitos HTTP 409 e respostas de validação.
-- **Evidências:** `PENDENTE`.
+- **Evidências:** Implementados `V3__seed_assignors.sql`, módulo `assignor` (`AssignorRepository`, `AssignorNotFoundException`, `AssignorService`, `AssignorResponse`, `AssignorController`), módulo `receivable` (`ReceivableRepository` com `@EntityGraph(attributePaths = "assignor")`, `ReceivableNotFoundException`, `DuplicateReceivableDocumentException`, `ReceivableService` com inspeção tipada de `PSQLException` `SQLState 23505` + `uk_receivables_assignor_document_number`, `CreateReceivableRequest`, `ReceivableResponse`, `ReceivableController`), movimentação de `InvalidDueDateException` para `common.exception` e atualização de `GlobalExceptionHandler`. Suíte completa validada com `.\mvnw.cmd test`: 195 testes executados, 0 falhas, 0 erros (`AssignorControllerTest`: 1, `ReceivableServiceTest`: 12, `ReceivableControllerTest`: 27, `ReceivableIntegrationTest`: 6, mais 149 testes anteriores sem regressão).
 
 ### TASK-009 — Liquidação ACID e snapshots auditáveis
 - **Objetivo:** liquidar lotes válidos integralmente, persistindo os parâmetros financeiros efetivamente utilizados.

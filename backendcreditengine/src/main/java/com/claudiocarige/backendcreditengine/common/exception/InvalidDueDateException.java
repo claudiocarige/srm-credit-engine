@@ -1,4 +1,4 @@
-package com.claudiocarige.backendcreditengine.simulation.application.exception;
+package com.claudiocarige.backendcreditengine.common.exception;
 
 import java.time.LocalDate;
 

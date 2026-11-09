@@ -14,6 +14,6 @@ public class StrictStringDeserializer extends ValueDeserializer<String> {
         if (token != JsonToken.VALUE_STRING) {
             return (String) ctxt.handleUnexpectedToken(String.class, p);
         }
-        return p.getText();
+        return p.getString();
     }
 }

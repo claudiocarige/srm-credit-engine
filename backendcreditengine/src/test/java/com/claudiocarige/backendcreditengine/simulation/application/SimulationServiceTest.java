@@ -15,7 +15,7 @@ import com.claudiocarige.backendcreditengine.pricing.domain.calculation.Commerci
 import com.claudiocarige.backendcreditengine.pricing.domain.calculation.CurrencyConverter;
 import com.claudiocarige.backendcreditengine.pricing.domain.model.CurrencyCode;
 import com.claudiocarige.backendcreditengine.pricing.domain.model.ReceivableType;
-import com.claudiocarige.backendcreditengine.simulation.application.exception.InvalidDueDateException;
+import com.claudiocarige.backendcreditengine.common.exception.InvalidDueDateException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
