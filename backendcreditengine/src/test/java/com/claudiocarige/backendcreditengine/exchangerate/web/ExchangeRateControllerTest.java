@@ -230,7 +230,7 @@ mockMvc.perform(post("/api/v1/exchange-rates")
                 .thenThrow(new ExchangeRateUnavailableException(CurrencyCode.USD, FIXED_NOW));
 
         mockMvc.perform(get("/api/v1/exchange-rates/current"))
-                .andExpect(status().isUnprocessableEntity())
+                .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.errorCode", is("EXCHANGE_RATE_UNAVAILABLE")));
     }
 
