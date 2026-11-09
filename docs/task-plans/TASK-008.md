@@ -3,7 +3,7 @@
 ## 1. Identificação
 - **Tarefa:** `TASK-008` — Identificação e Persistência Mínima de Cedentes e Recebíveis.
 - **Objetivo:** disponibilizar os endpoints REST de consulta de cedentes (`GET /api/v1/assignors`) e de cadastro e consulta de recebíveis (`POST /api/v1/receivables`, `GET /api/v1/receivables` e `GET /api/v1/receivables/{id}`) em conformidade estrita com o contrato oficial (`docs/openapi/srm-credit-engine.yaml`) e `docs/contracts.md`, garantindo a carga inicial (seed) determinística de cedentes, normalização e unicidade de `documentNumber` por cedente (inclusive sob concorrência), validação temporal via `Clock` UTC injetável (`dueDate > operationDate`), rejeição de propriedades JSON desconhecidas e de coerções numéricas em strings decimais, e tratamento padronizado de erros via `ProblemDetail` (`application/problem+json`).
-- **Status do planejamento:** `PRONTO PARA EXECUÇÃO (READY)` — aguardando autorização humana final (`G-01`) após revisão arquitetural.
+- **Status do planejamento:** `CONCLUÍDA (DONE)`.
 - **Referências:**
   - `SPEC.md` (§§1, 3 e 5);
   - `DECISIONS.md`:
@@ -455,5 +455,19 @@ Com `Clock` fixo em `2026-11-04T15:20:00Z` (`operationDate = 2026-11-04`):
 
 ## 12. Resultados e Evidências de Execução
 
-- **Estado atual:** `READY` (Plano técnico revisado em 2026-11-08T22:12:00-03:00; aguardando autorização humana para início da implementação).
-- **Evidências:** Serão preenchidas durante a execução das subtarefas ST-01 a ST-06.
+- **Estado atual:** `DONE` (Implementação e ajustes pós-Code Review concluídos, validados e aprovados em 2026-11-09T00:08:00-03:00).
+- **Resumo das alterações implementadas:**
+  - **Migration `V3` e isolamento determinístico:** Criada `V3__seed_assignors.sql` com os 2 cedentes canônicos do OpenAPI; atualizados `DatabaseSchemaTest`, `AssignorPersistenceTest` (`@AfterEach`) e `ReceivablePersistenceTest` (`@AfterEach`) para restauração idempotente do seed `V3` independente da ordem de execução das classes de teste.
+  - **Módulo `assignor`:** Implementados `AssignorRepository`, `AssignorNotFoundException`, `AssignorService`, `AssignorResponse` e `AssignorController` (`GET /api/v1/assignors`).
+  - **Módulo `receivable`:** Implementados `ReceivableRepository` (com `@EntityGraph(attributePaths = "assignor")` para compatibilidade com `open-in-view=false` e prevenção de `N+1`), `ReceivableNotFoundException`, `DuplicateReceivableDocumentException`, `ReceivableService`, `CreateReceivableRequest`, `ReceivableResponse` e `ReceivableController` (`POST /api/v1/receivables`, `GET /api/v1/receivables`, `GET /api/v1/receivables/{id}`).
+  - **Exceções compartilhadas e tratamento global:** Movida `InvalidDueDateException` para `common.exception` e atualizados `GlobalExceptionHandler` (`404 ASSIGNOR_NOT_FOUND`, `404 RECEIVABLE_NOT_FOUND`, `409 DUPLICATE_RECEIVABLE_DOCUMENT` e `400 VALIDATION_ERROR` em `MissingServletRequestParameterException`).
+  - **Ajustes Pós-Code Review:**
+    1. Removido `<scope>runtime</scope>` da dependência existente `org.postgresql:postgresql` em `pom.xml` para permitir inspeção tipada de `PSQLException` em `ReceivableService`.
+    2. `ReceivableService.isDuplicateReceivableConstraint()` utiliza exclusivamente metadados estruturados (`PSQLException.getSQLState() == "23505"` + `PSQLException.getServerErrorMessage().getConstraint() == "uk_receivables_assignor_document_number"` e `ConstraintViolationException.getSQLState()` + `getConstraintName()`), sem depender de mensagens textuais (`getMessage()`).
+    3. Adicionados em `ReceivableControllerTest` os testes explícitos para `GET /api/v1/receivables?assignorId=abc` (`400 VALIDATION_ERROR`) e `GET /api/v1/receivables/abc` (`400 VALIDATION_ERROR`), e em `ReceivableServiceTest` os testes de `PSQLException` + `ServerErrorMessage` para constraint correspondente, constraint divergente (`uk_other_constraint`) e `SQLState` divergente (`23503`).
+- **Evidências de Testes Automatizados:**
+  - **Suíte da `TASK-008` (`AssignorControllerTest`, `ReceivableServiceTest`, `ReceivableControllerTest`, `ReceivableIntegrationTest`):** `46` testes executados, `0` falhas, `0` erros, `0` ignorados (`AssignorControllerTest`: `1`, `ReceivableServiceTest`: `12`, `ReceivableControllerTest`: `27`, `ReceivableIntegrationTest`: `6`).
+  - **Concorrência real com PostgreSQL (`ReceivableIntegrationTest.shouldHandleConcurrentDuplicateReceivableCreationGracefully`):** Duas threads sincronizadas com `CountDownLatch` e `CyclicBarrier` (sem `Thread.sleep()`) dispararam simultaneamente `POST /api/v1/receivables` para o mesmo `assignorId` e `documentNumber` equivalente (`"  dup-conc-99  "` e `"DUP-CONC-99"`), colidindo na constraint `uk_receivables_assignor_document_number` (`SQLState: 23505`) e resultando em `[201, 409]` (`errorCode: "DUPLICATE_RECEIVABLE_DOCUMENT"`), `0` respostas `500` e `1` único registro persistido no banco.
+  - **Lazy Loading (`open-in-view=false`) e ausência de `N+1` (`ReceivableIntegrationTest.shouldNotTriggerNPlusOneQueriesWhenListingMultipleReceivables`):** Com 5 recebíveis cadastrados, `Hibernate Statistics` comprovou execução constante de `<= 2` statements SQL na listagem.
+  - **Suíte Maven completa (`.\mvnw.cmd test`):** `195` testes executados, `0` falhas, `0` erros, `0` ignorados (`BUILD SUCCESS`).
+  - **Verificação de formatação (`git diff --check`):** Sem erros de whitespace/formatação.
