@@ -235,7 +235,7 @@ Uma tarefa só pode receber `DONE` quando:
 | TASK-004 | Prazo comercial, conversão BRL→USD + C3 | P0 | 003 | `DONE` |
 | TASK-005 | PostgreSQL, Flyway e modelo persistente inicial | P0 | 002 | `DONE` |
 | TASK-006 | Currency Engine: histórico, vigência e API manual | P0 | 004, 005 | `DONE` |
-| TASK-007 | API REST de simulação + conformidade OpenAPI e Swagger UI | P0 | 003, 004, 006 | `READY` |
+| TASK-007 | API REST de simulação + conformidade OpenAPI e Swagger UI | P0 | 003, 004, 006 | `VALIDATION` |
 | TASK-008 | Cadastro/identificação mínima de cedentes e recebíveis | P0 | 002, 005 | `PENDING` |
 | TASK-009 | Liquidação de lote ACID + auditoria imutável | P0 | 006, 007, 008 | `PENDING` |
 | TASK-010 | Idempotência, dupla liquidação e concorrência | P0 | 009 | `PENDING` |
@@ -415,6 +415,7 @@ mantendo execução e aprovação individuais.
   - Swagger UI acessível no ambiente de desenvolvimento.
   - Documentação exibida consistente com o contrato oficial.
   - Testes automatizados dos comportamentos HTTP aplicáveis.
+- **Evidências:** Implementados `SimulationService`, `SimulationResult`, `InvalidDueDateException`, `SimulationRequest`, `SimulationResponse`, `SimulationController`, `PricingConfig`, `OpenApiConfig`, refatoração de `StrictStringDeserializer` para `common.web`, atualização de `GlobalExceptionHandler` (`422 INVALID_DUE_DATE`) e integração do `springdoc-openapi-starter-webmvc-ui:3.1.0` com empacotamento estático de `docs/openapi/srm-credit-engine.yaml` via `maven-resources-plugin` (`springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.url=/openapi/srm-credit-engine.yaml`, `springdoc.swagger-ui.disable-swagger-default-url=true`). Suíte completa validada com `.\mvnw.cmd test`: 149 testes executados, 0 falhas, 0 erros (`SimulationServiceTest`: 10, `SimulationControllerTest`: 13, `SimulationIntegrationTest`: 5, mais 121 testes anteriores sem regressão).
 
 ### TASK-008 — Identificação e persistência mínima dos recebíveis
 - **Objetivo:** disponibilizar títulos e cedentes identificáveis e elegíveis para a liquidação, conforme o fluxo aprovado na TASK-002.

@@ -3,7 +3,7 @@
 ## 1. Identificação
 - **Tarefa:** `TASK-007` — API REST de Simulação e Integração OpenAPI/Swagger UI.
 - **Objetivo:** disponibilizar o endpoint stateless de simulação de precificação de recebíveis em tempo real (`POST /api/v1/simulations`) estritamente aderente ao contrato oficial (`docs/openapi/srm-credit-engine.yaml`), integrando o motor financeiro puro (`PricingEngine`, `CommercialTermCalculator`, `CurrencyConverter`) e o Currency Engine (`ExchangeRateService`), com controle temporal único via `Clock` UTC injetável, rejeição de propriedades JSON desconhecidas e de coerções numéricas em strings decimais, tratamento padronizado de erros via `ProblemDetail` e disponibilização do Swagger UI referenciando exclusivamente o contrato OpenAPI oficial como fonte única de verdade.
-- **Status do planejamento:** `PLANO APROVADO (READY) — AGUARDANDO INÍCIO DA IMPLEMENTAÇÃO`.
+- **Status do planejamento:** `EM VALIDAÇÃO (VALIDATION)`.
 - **Referências:**
   - `SPEC.md` (§§1, 2, 3 e 5);
   - `DECISIONS.md`:
@@ -386,5 +386,9 @@ Utilizando instâncias reais de `PricingEngine`, `CommercialTermCalculator` e `C
 
 ## 15. Resultados e Evidências de Execução
 
-- **Estado atual:** `READY` (Plano técnico aprovado em 2026-11-07T13:19:44-03:00).
-- **Evidências:** Serão preenchidas durante a execução das subtarefas ST-01 a ST-10.
+- **Estado atual:** `VALIDATION` (Implementação concluída e verificada em 2026-11-08T19:57:28-03:00).
+- **Evidências:**
+  - `SimulationServiceTest`: 10 testes executados, 0 falhas (C1, C2, C3 equivalentes, fronteiras de prazo comercial 1/30/31 dias, rejeição de `dueDate <= operationDate`, propagação de `ExchangeRateUnavailableException` e captura única de `simulatedAt` no `Clock`).
+  - `SimulationControllerTest`: 13 testes executados, 0 falhas (contrato `200 OK` com 14 campos obrigatórios em C1, C2 e C3, rejeição de propriedade JSON desconhecida com `400 VALIDATION_ERROR`, rejeição de `faceValueBrl` numérico sem aspas com `400 VALIDATION_ERROR`, validação de padrão `FaceValueBrlInput` e campos obrigatórios, e tradução de `422 INVALID_DUE_DATE` e `422 EXCHANGE_RATE_UNAVAILABLE`).
+  - `SimulationIntegrationTest`: 5 testes executados com PostgreSQL 16.15 via Testcontainers, 0 falhas (fluxo fim a fim C1, C2 e C3, comprovação de ausência de efeitos persistentes nas tabelas `receivables`, `exchange_rates` e `assignors`, cenários `422` integrados e verificação completa de `/openapi/srm-credit-engine.yaml`, `/swagger-ui/index.html`, `/swagger-ui/swagger-initializer.js` sem `petstore.swagger.io` e `/v3/api-docs` retornando `404`).
+  - Suíte completa (`.\mvnw.cmd test`): **149 testes executados, 0 falhas, 0 erros, 0 ignorados** (`BUILD SUCCESS`).

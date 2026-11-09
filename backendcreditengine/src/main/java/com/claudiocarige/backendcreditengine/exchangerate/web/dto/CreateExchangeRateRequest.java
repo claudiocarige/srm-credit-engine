@@ -1,5 +1,6 @@
 package com.claudiocarige.backendcreditengine.exchangerate.web.dto;
 
+import com.claudiocarige.backendcreditengine.common.web.StrictStringDeserializer;
 import com.claudiocarige.backendcreditengine.pricing.domain.model.CurrencyCode;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
